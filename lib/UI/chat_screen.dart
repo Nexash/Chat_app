@@ -22,12 +22,16 @@ class _ChatScreenState extends State<ChatScreen> {
   String? chatId;
   final String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
   final TextEditingController _messageController = TextEditingController();
+  late Stream<List<MessageModel>> _messageStream;
 
   @override
   void initState() {
     super.initState();
-    _generateChatId();
+    List<String> ids = [currentUserId, widget.user.uid];
+    ids.sort();
+    chatId = ids.join("_");
     _loadCurrentUser();
+    _messageStream = _chatController.getMessages(chatId!);
   }
 
   void _loadCurrentUser() async {
@@ -35,17 +39,6 @@ class _ChatScreenState extends State<ChatScreen> {
     if (mounted) {
       setState(() {}); // Redraw the screen once we have your photo
     }
-  }
-
-  void _generateChatId() {
-    // Sort the UIDs alphabetically to ensure the same ID every time
-    List<String> ids = [currentUserId, widget.user.uid];
-    ids.sort();
-
-    setState(() {
-      chatId = ids.join("_"); // Result: "uid1_uid2"
-    });
-    log("$chatId");
   }
 
   Future<void> sendMessage() async {
@@ -70,68 +63,68 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.deepPurple[200],
-      appBar: AppBar(
-        backgroundColor: Colors.deepPurple[400],
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 20, // Slightly larger for the AppBar
-              backgroundImage:
-                  (widget.user.photoUrl.isNotEmpty)
-                      ? NetworkImage(widget.user.photoUrl)
-                      : null,
-              child:
-                  (widget.user.photoUrl.isEmpty)
-                      ? const Icon(Icons.person, color: Colors.white)
-                      : null,
-            ),
-            const SizedBox(width: 12), // Give some space between image and name
-            Expanded(
-              // Use Expanded here so long names don't overflow the AppBar
-              child: Text(
-                widget.user.name,
-                style: const TextStyle(
-                  fontSize: 20, // 25 might be a bit too big for some screens
-                  color: Colors.white,
-                  overflow:
-                      TextOverflow.ellipsis, // Adds "..." if name is too long
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
+        backgroundColor: Colors.deepPurple[200],
+        appBar: AppBar(
+          backgroundColor: Colors.deepPurple[400],
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 20, // Slightly larger for the AppBar
+                backgroundImage:
+                    (widget.user.photoUrl.isNotEmpty)
+                        ? NetworkImage(widget.user.photoUrl)
+                        : null,
+                child:
+                    (widget.user.photoUrl.isEmpty)
+                        ? const Icon(Icons.person, color: Colors.white)
+                        : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.user.name,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    color: Colors.white,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: Column(
+        body: Column(
           children: [
             if (chatId == null)
               const Expanded(child: Center(child: CircularProgressIndicator()))
             else
               Expanded(
                 child: StreamBuilder<List<MessageModel>>(
-                  stream: _chatController.getMessages(
-                    chatId!,
-                  ), // Use the new function
+                  stream: _messageStream,
                   builder: (context, snapshot) {
-                    if (snapshot.hasError)
+                    if (snapshot.hasError) {
                       return Text("Error: ${snapshot.error}");
-                    if (snapshot.connectionState == ConnectionState.waiting)
+                    }
+
+                    if (snapshot.connectionState == ConnectionState.waiting) {
                       return CircularProgressIndicator();
+                    }
 
                     final messages = snapshot.data ?? [];
                     return ListView.builder(
-                      reverse:
-                          true, // This works perfectly with 'descending: true' in the controller
+                      reverse: true,
                       itemCount: messages.length,
                       itemBuilder: (context, index) {
                         return _buildMessageBubble(
@@ -144,55 +137,65 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
 
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.only(left: 15),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    child: TextField(
-                      controller: _messageController,
-                      decoration: const InputDecoration(
-                        hintText: "Type a message...",
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
+            SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 15),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(25),
                         ),
-                        border: InputBorder.none,
+                        child: TextField(
+                          controller: _messageController,
+                          minLines: 1,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            hintText: "Type a message...",
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                            border: InputBorder.none,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                SizedBox(width: 8),
-                IconButton(
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.white, // Background color
-                    shape:
-                        const CircleBorder(), // Ensures it's a perfect circle
-                    padding: const EdgeInsets.only(
-                      left: 15,
-                      right: 10,
-                      top: 10,
-                      bottom: 10,
-                    ), // Adjust size of the circle
-                  ),
-                  padding: EdgeInsets.only(left: 5),
+                    SizedBox(width: 8),
+                    IconButton(
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        shape: const CircleBorder(),
+                        padding: const EdgeInsets.only(
+                          left: 15,
+                          right: 10,
+                          top: 10,
+                          bottom: 10,
+                        ),
+                      ),
+                      padding: EdgeInsets.only(left: 5),
 
-                  onPressed: () {
-                    sendMessage();
-                  },
-                  icon: Icon(
-                    Icons.send,
-                    size: 25,
-                    color: Colors.deepPurple[400],
-                  ),
+                      onPressed: () {
+                        sendMessage();
+                      },
+                      icon: Icon(
+                        Icons.send,
+                        size: 25,
+                        color: Colors.deepPurple[400],
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                  ],
                 ),
-                SizedBox(width: 10),
-              ],
+              ),
             ),
+
+            // SizedBox(height: keyboardHeight),
           ],
         ),
       ),
@@ -254,9 +257,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                     ),
                     Text(
-                      formatMessageTime(
-                        message.timestamp.toString(),
-                      ), // Call the helper here
+                      formatMessageTime(message.timestamp.toString()),
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 10,

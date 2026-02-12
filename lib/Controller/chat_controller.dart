@@ -1,8 +1,11 @@
+import 'dart:developer';
+
 import 'package:chat_app/Modal/message_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChatController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final Map<String, Stream<List<MessageModel>>> _streamCache = {};
 
   Future<String> getOrCreateChat(String uid1, String uid2) async {
     List<String> ids = [uid1, uid2];
@@ -43,10 +46,11 @@ class ChatController {
     // as messageRef is just and empty storage with only message id here newmessage is stored in the message ref
     batch.set(messageRef, newMessage.toJson());
 
-    batch.update(_firestore.collection('chats').doc(chatId), {
+    batch.set(_firestore.collection('chats').doc(chatId), {
       'lastMessage': text,
       'lastMessageTime': Timestamp.fromDate(newMessage.timestamp),
-    });
+      'participants': chatId.split('_'),
+    }, SetOptions(merge: true));
 
     await batch.commit();
   }
@@ -54,20 +58,25 @@ class ChatController {
   // 3. Get Messages Stream
   // This listens to the sub-collection and returns a list of MessageModel
   Stream<List<MessageModel>> getMessages(String chatId) {
-    return _firestore
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .orderBy(
-          'timestamp',
-          descending: true,
-        ) // Newest messages at the top for "reverse" lists
-        .snapshots()
-        .map((snapshot) {
-          // Convert each Firestore Document into our MessageModel
-          return snapshot.docs
-              .map((doc) => MessageModel.fromDocument(doc))
-              .toList();
-        });
+    if (_streamCache.containsKey(chatId)) {
+      log("Returning Cached Stream for: $chatId");
+      return _streamCache[chatId]!;
+    }
+    log("Creating NEW Stream for: $chatId");
+    final stream =
+        _firestore
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .orderBy('timestamp', descending: true)
+            .snapshots()
+            .map((snapshot) {
+              return snapshot.docs
+                  .map((doc) => MessageModel.fromDocument(doc))
+                  .toList();
+            })
+            .asBroadcastStream();
+    _streamCache[chatId] = stream;
+    return stream;
   }
 }
