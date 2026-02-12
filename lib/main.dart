@@ -1,4 +1,3 @@
-import 'package:chat_app/UI/HomeScreen.dart';
 import 'package:chat_app/UI/login_screen.dart';
 import 'package:chat_app/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -16,6 +15,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),

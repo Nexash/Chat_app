@@ -1,6 +1,6 @@
 import 'dart:developer';
 
-import 'package:chat_app/Controller/login_user_Controller.dart';
+import 'package:chat_app/Service/auth_service.dart';
 import 'package:chat_app/UI/HomeScreen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +13,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  AuthService authService = AuthService();
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context).size;
@@ -37,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
               FilledButton.tonalIcon(
                 onPressed: () async {
                   try {
-                    final user = await UserController.loginWithGoogle(
+                    final user = await authService.loginWithGoogle(
                       forceAccountPicker: true,
                     );
                     if (user != null) {
