@@ -48,6 +48,14 @@ class UserController {
     });
   }
 
+  Stream<UserModal> getUserStream(String uid) {
+    return _firestore
+        .collection('users') // Make sure this matches your collection name
+        .doc(uid)
+        .snapshots()
+        .map((doc) => UserModal.fromDocument(doc));
+  }
+
   Future<void> fetchCurrentuser() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {

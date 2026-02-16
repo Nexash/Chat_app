@@ -9,27 +9,31 @@ class AuthService {
   UserController userController = UserController();
 
   Future<User?> loginWithGoogle({bool forceAccountPicker = false}) async {
-    if (forceAccountPicker) {
-      // Force account selection by signing out first
-      await GoogleSignIn().signOut();
+    try {
+      if (forceAccountPicker) {
+        await GoogleSignIn().signOut();
+      }
+      final googleAccount = await GoogleSignIn().signIn();
+
+      final googleAuth = await googleAccount?.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth?.accessToken,
+        idToken: googleAuth?.idToken,
+      );
+
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(
+        credential,
+      );
+      if (userCredential.user != null) {
+        await userController.saveUserData(userCredential.user!);
+      }
+      log("${userCredential.user}");
+      return userCredential.user;
+    } catch (e) {
+      log(e.toString());
+      return null;
     }
-    final googleAccount = await GoogleSignIn().signIn();
-
-    final googleAuth = await googleAccount?.authentication;
-
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth?.accessToken,
-      idToken: googleAuth?.idToken,
-    );
-
-    final userCredential = await FirebaseAuth.instance.signInWithCredential(
-      credential,
-    );
-    if (userCredential.user != null) {
-      await userController.saveUserData(userCredential.user!);
-    }
-    log("${userCredential.user}");
-    return userCredential.user;
   }
 
   Future<void> signOut() async {

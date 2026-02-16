@@ -19,44 +19,63 @@ class ChatController {
     return chatId;
   }
 
+  Future<void> updateChatPresence(
+    String chatId,
+    String userId,
+    bool isEntering,
+  ) async {
+    await _firestore.collection('chats').doc(chatId).update({
+      'activeParticipants':
+          isEntering
+              ? FieldValue.arrayUnion([userId])
+              : FieldValue.arrayRemove([userId]),
+    });
+  }
+
   // 2. Send Message
   Future<void> sendMessage({
     required String chatId,
     required String senderId,
     required String text,
   }) async {
-    //when we send the data we will not have message id yet so we store and get the message id here
-    //it makes the data ready to send using doc() and we have generated the message id
+    final chatDoc = await _firestore.collection('chats').doc(chatId).get();
+    final List activeUsers = chatDoc.data()?['activeParticipants'] ?? [];
+
+    // Get the recipient ID (the one who isn't the sender)
+    final List participants = chatId.split('_');
+    final String recipientId =
+        participants.first == senderId ? participants.last : participants.first;
+
+    // Logic: If recipient is in activeUsers, message is ALREADY read
+    bool isReadByRecipient = activeUsers.contains(recipientId);
+
     final messageRef =
         _firestore.collection('chats').doc(chatId).collection('messages').doc();
 
     final newMessage = MessageModel(
-      id: messageRef.id, // message id is used here
+      id: messageRef.id,
       senderId: senderId,
       text: text,
-      timestamp:
-          DateTime.now(), // Local time for now, Firestore handles the rest
-      read: false,
+      timestamp: DateTime.now(),
+      read: isReadByRecipient, // 🔥 Use the check here
       type: 'text',
     );
 
-    // This ensures BOTH the message and the lastMessage update at the exact same time
     WriteBatch batch = _firestore.batch();
-
-    // as messageRef is just and empty storage with only message id here newmessage is stored in the message ref
     batch.set(messageRef, newMessage.toJson());
 
     batch.set(_firestore.collection('chats').doc(chatId), {
       'lastMessage': text,
       'lastMessageTime': Timestamp.fromDate(newMessage.timestamp),
-      'participants': chatId.split('_'),
+      'lastMessageRead':
+          isReadByRecipient, // 🔥 Also update the notification dot status
+      'lastMassageSender': senderId,
+      'participants': participants,
     }, SetOptions(merge: true));
 
     await batch.commit();
   }
 
-  // 3. Get Messages Stream
-  // This listens to the sub-collection and returns a list of MessageModel
   Stream<List<MessageModel>> getMessages(String chatId) {
     if (_streamCache.containsKey(chatId)) {
       log("Returning Cached Stream for: $chatId");
@@ -75,8 +94,26 @@ class ChatController {
                   .map((doc) => MessageModel.fromDocument(doc))
                   .toList();
             })
+            // 🔥 ADD THIS PART HERE:
+            .distinct((prev, next) {
+              if (prev.length != next.length) return false;
+
+              if (prev.isEmpty && next.isEmpty) return true;
+
+              return prev.first.id == next.first.id;
+            })
             .asBroadcastStream();
     _streamCache[chatId] = stream;
     return stream;
+  }
+
+  Stream<DocumentSnapshot> getChatRoomData(String chatId) {
+    return _firestore.collection('chats').doc(chatId).snapshots();
+  }
+
+  Future<void> markAsRead(String chatId) async {
+    await _firestore.collection('chats').doc(chatId).update({
+      'lastMessageRead': true,
+    });
   }
 }

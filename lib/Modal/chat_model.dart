@@ -6,7 +6,10 @@ part 'chat_model.g.dart';
 @JsonSerializable()
 class ChatModel {
   final String id;
+  final bool? lastMessageRead;
+  final String? lastMassageSender;
   final List<String> participants;
+  final List<String> activeParticipants;
   final String? lastMessage;
   @JsonKey(
     fromJson: ChatModel.nullableTimestampFromJson,
@@ -17,8 +20,11 @@ class ChatModel {
   ChatModel({
     required this.id,
     required this.participants,
+    this.activeParticipants = const [],
     this.lastMessage,
     this.lastMessageTime,
+    this.lastMassageSender,
+    this.lastMessageRead,
   });
 
   factory ChatModel.fromJson(Map<String, dynamic> json) =>

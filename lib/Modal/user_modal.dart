@@ -22,7 +22,7 @@ class UserModal {
     this.photoUrl = "",
     this.lastSeen = "",
   });
-  factory UserModal.fromDocument(QueryDocumentSnapshot doc) {
+  factory UserModal.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     data['uid'] = doc.id; // Add document ID
     if (data['lastSeen'] is Timestamp) {

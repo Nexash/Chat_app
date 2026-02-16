@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:chat_app/Service/auth_service.dart';
 import 'package:chat_app/UI/HomeScreen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,67 +12,122 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   AuthService authService = AuthService();
+  bool _isLoading = false;
+
+  void handleLogin() async {
+    setState(() => _isLoading = true);
+
+    AuthService authService = AuthService();
+    User? user = await authService.loginWithGoogle(forceAccountPicker: true);
+
+    if (user != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Login Successful! ."),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } else {
+      // 3. If login failed or was cancelled, stop loading
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context).size;
 
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF74ABE2), Color(0xFF5563DE)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Google Login
-              FilledButton.tonalIcon(
-                onPressed: () async {
-                  try {
-                    final user = await authService.loginWithGoogle(
-                      forceAccountPicker: true,
-                    );
-                    if (user != null) {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (context) => HomeScreen()),
-                      );
-                    }
-                  } on FirebaseAuthException catch (error) {
-                    log(error.toString());
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(error.message ?? "Error")),
-                    );
-                  } catch (error) {
-                    log(error.toString());
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(error.toString())));
-                  }
-                },
-                icon: const Icon(Icons.login, color: Colors.white),
-                label: const Text(
-                  "Continue with Google",
-                  style: TextStyle(color: Colors.white),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
+      body: Stack(
+        children: [
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF74ABE2), Color.fromARGB(255, 10, 21, 105)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              SizedBox(height: media.height * 0.05),
-            ],
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 48.0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                  Center(
+                    child: Text(
+                      "S P I L L ",
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                  Center(
+                    child: Text(
+                      "S O M E ",
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                  Center(
+                    child: Text(
+                      "T E A",
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.15),
+                  FilledButton.tonalIcon(
+                    onPressed: () async {
+                      handleLogin();
+                    },
+
+                    label: const Text(
+                      "Continue with Google",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.deepPurple[400],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                  SizedBox(height: media.height * 0.05),
+                ],
+              ),
+            ),
           ),
-        ),
+          if (_isLoading)
+            Container(
+              color: Colors.black26, // Dims the screen slightly
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+        ],
       ),
     );
   }
