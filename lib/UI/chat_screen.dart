@@ -9,8 +9,17 @@ import 'package:flutter/material.dart';
 
 class ChatScreen extends StatefulWidget {
   final UserModal user;
+  final String chatId;
   final UserModal currentUser;
-  const ChatScreen({super.key, required this.user, required this.currentUser});
+  final String currentUserId;
+  const ChatScreen({
+    super.key,
+    required this.user,
+    required this.chatId,
+    required this.currentUser,
+
+    required this.currentUserId,
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -45,6 +54,9 @@ class _ChatScreenState extends State<ChatScreen> {
             : const AssetImage('assets/default_user.png');
 
     _messageStream = _chatController.getMessages(chatId!);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _chatController.markMessagesAsRead(chatId!, currentUserId);
+    });
     _chatController.updateChatPresence(chatId!, currentUserId, true);
   }
 
@@ -52,6 +64,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     // Mark myself as inactive when I leave
     _chatController.updateChatPresence(chatId!, currentUserId, false);
+
     super.dispose();
   }
 
@@ -164,6 +177,24 @@ class _ChatScreenState extends State<ChatScreen> {
                             }
 
                             final messages = snapshot.data ?? [];
+
+                            if (messages.isNotEmpty) {
+                              log(
+                                "Stream updated! Message count: ${snapshot.data!.length}",
+                              );
+                              log(
+                                "Latest message read status: ${snapshot.data!.first.read}",
+                              );
+                              final latestMessage = messages.first;
+
+                              if (latestMessage.senderId != currentUserId &&
+                                  !latestMessage.read) {
+                                _chatController.markMessagesAsRead(
+                                  chatId!,
+                                  currentUserId,
+                                );
+                              }
+                            }
                             return ListView.builder(
                               padding: EdgeInsets.zero,
                               reverse: true,
@@ -324,7 +355,12 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         ),
                         SizedBox(width: 8),
-                        Icon(Icons.done_all, size: 15),
+                        if (isMe)
+                          Icon(
+                            message.read ? Icons.done_all : Icons.done_all,
+                            size: 15,
+                            color: message.read ? Colors.blue : Colors.grey,
+                          ),
                       ],
                     ),
                   ],

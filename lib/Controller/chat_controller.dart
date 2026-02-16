@@ -94,13 +94,12 @@ class ChatController {
                   .map((doc) => MessageModel.fromDocument(doc))
                   .toList();
             })
-            // 🔥 ADD THIS PART HERE:
             .distinct((prev, next) {
               if (prev.length != next.length) return false;
-
               if (prev.isEmpty && next.isEmpty) return true;
-
-              return prev.first.id == next.first.id;
+              final bool idChanged = prev.first.id != next.first.id;
+              final bool readStatusChanged = prev.first.read != next.first.read;
+              return !idChanged && !readStatusChanged;
             })
             .asBroadcastStream();
     _streamCache[chatId] = stream;
@@ -115,5 +114,29 @@ class ChatController {
     await _firestore.collection('chats').doc(chatId).update({
       'lastMessageRead': true,
     });
+  }
+
+  Future<void> markMessagesAsRead(String chatId, String currentUserId) async {
+    final query =
+        await _firestore
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .where('read', isEqualTo: false)
+            .where('senderId', isNotEqualTo: currentUserId)
+            .get();
+    if (query.docs.isEmpty) return;
+
+    WriteBatch batch = _firestore.batch();
+
+    for (var doc in query.docs) {
+      batch.update(doc.reference, {'read': true});
+    }
+
+    batch.update(_firestore.collection('chats').doc(chatId), {
+      'lastMessageRead': true,
+    });
+
+    await batch.commit();
   }
 }
