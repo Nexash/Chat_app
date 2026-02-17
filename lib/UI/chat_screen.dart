@@ -18,7 +18,6 @@ class ChatScreen extends StatefulWidget {
     required this.user,
     required this.chatId,
     required this.currentUser,
-
     required this.currentUserId,
   });
 
@@ -30,13 +29,15 @@ class _ChatScreenState extends State<ChatScreen> {
   final ChatController _chatController = ChatController();
   late ImageProvider userImage;
   late ImageProvider currentUserImage;
+  final ScrollController _scrollController = ScrollController();
 
   String? chatId;
   final String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
   final TextEditingController _messageController = TextEditingController();
   late Stream<List<MessageModel>> _messageStream;
 
-  final double _textFieldHeight = 0;
+  bool _isLoadingMore = false;
+  bool _userHasScrolled = false;
 
   @override
   void initState() {
@@ -44,6 +45,7 @@ class _ChatScreenState extends State<ChatScreen> {
     List<String> ids = [currentUserId, widget.user.uid];
     ids.sort();
     chatId = ids.join("_");
+
     userImage =
         widget.user.photoUrl.isNotEmpty
             ? NetworkImage(widget.user.photoUrl)
@@ -55,34 +57,62 @@ class _ChatScreenState extends State<ChatScreen> {
             : const AssetImage('assets/default_user.png');
 
     _messageStream = _chatController.getMessages(chatId!);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _chatController.markMessagesAsRead(chatId!, currentUserId);
     });
+
     _chatController.updateChatPresence(chatId!, currentUserId, true);
+
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_userHasScrolled) {
+      setState(() => _userHasScrolled = true);
+    }
+
+    final pos = _scrollController.position;
+
+    final bool canPaginate =
+        _userHasScrolled &&
+        pos.maxScrollExtent > 0 &&
+        pos.pixels >= pos.maxScrollExtent - 300 &&
+        !_isLoadingMore &&
+        _chatController.hasMore(chatId!);
+
+    if (canPaginate) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadMore() async {
+    setState(() => _isLoadingMore = true);
+    await _chatController.fetchMoreMessages(chatId!);
+    if (mounted) setState(() => _isLoadingMore = false);
   }
 
   @override
   void dispose() {
-    // Mark myself as inactive when I leave
+    _chatController.scheduleDispose(chatId!);
     _chatController.updateChatPresence(chatId!, currentUserId, false);
-
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
   Future<void> sendMessage() async {
     if (_messageController.text.trim().isNotEmpty) {
       String messageText = _messageController.text.trim();
-
       _messageController.clear();
-
       try {
         await _chatController.sendMessage(
           chatId: chatId!,
           senderId: currentUserId,
           text: messageText,
         );
-        log("✅ Message Sent Successfully to Chat: $chatId");
-        log("Content: $messageText");
+        log("✅ Message Sent: $chatId → $messageText");
       } catch (e) {
         log(e.toString());
       }
@@ -93,6 +123,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
     final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
@@ -101,11 +132,11 @@ class _ChatScreenState extends State<ChatScreen> {
         appBar: AppBar(
           backgroundColor: Colors.deepPurple[400],
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.white),
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () async {
               if (isKeyboardVisible) {
                 FocusManager.instance.primaryFocus?.unfocus();
-                await Future.delayed(Duration(milliseconds: 500));
+                await Future.delayed(const Duration(milliseconds: 500));
                 if (context.mounted) Navigator.pop(context);
               } else {
                 if (context.mounted) Navigator.pop(context);
@@ -121,8 +152,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 size: 22,
                 isonline: widget.user.isOnline,
               ),
-
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   widget.user.name,
@@ -142,19 +172,14 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Column(
                 children: [
                   if (chatId == null)
-                    Center(child: CircularProgressIndicator())
+                    const Center(child: CircularProgressIndicator())
                   else
                     Expanded(
                       child: AnimatedPadding(
                         duration: const Duration(milliseconds: 400),
-                        curve:
-                            Curves
-                                .fastEaseInToSlowEaseOut, // Changed from bounceIn for smoother flow
+                        curve: Curves.fastEaseInToSlowEaseOut,
                         padding: EdgeInsets.only(
-                          bottom:
-                              keyboardHeight > 0
-                                  ? keyboardHeight + _textFieldHeight
-                                  : 0,
+                          bottom: keyboardHeight > 0 ? keyboardHeight : 0,
                         ),
                         child: StreamBuilder<List<MessageModel>>(
                           stream: _messageStream,
@@ -169,51 +194,80 @@ class _ChatScreenState extends State<ChatScreen> {
                             if (snapshot.connectionState ==
                                     ConnectionState.waiting &&
                                 !snapshot.hasData) {
-                              return Center(child: CircularProgressIndicator());
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
                             }
 
                             final messages = snapshot.data ?? [];
 
                             if (messages.isNotEmpty) {
-                              log(
-                                "Stream updated! Message count: ${snapshot.data!.length}",
-                              );
-                              log(
-                                "Latest message read status: ${snapshot.data!.first.read}",
-                              );
                               final latestMessage = messages.first;
-
                               if (latestMessage.senderId != currentUserId &&
                                   !latestMessage.read) {
-                                _chatController.markMessagesAsRead(
-                                  chatId!,
-                                  currentUserId,
-                                );
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  _chatController.markMessagesAsRead(
+                                    chatId!,
+                                    currentUserId,
+                                  );
+                                });
                               }
                             }
-                            return ListView.builder(
-                              padding: EdgeInsets.zero,
-                              reverse: true,
 
-                              itemCount: messages.length,
-                              itemBuilder: (context, index) {
-                                return ChatBubble(
-                                  message: messages[index],
-                                  user: widget.user,
-                                  currentUser: widget.currentUser,
-                                  isMe:
-                                      messages[index].senderId == currentUserId,
-                                );
-                              },
+                            return Column(
+                              children: [
+                                if (!_chatController.hasMore(chatId!) &&
+                                    messages.isNotEmpty)
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 8),
+                                    // child: Text(
+                                    //   "Start of conversation",
+                                    //   style: TextStyle(
+                                    //     color: Colors.white70,
+                                    //     fontSize: 12,
+                                    //   ),
+                                    // ),
+                                  ),
+                                if (_isLoadingMore)
+                                  const Padding(
+                                    padding: EdgeInsets.all(6),
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+
+                                Expanded(
+                                  child: ListView.builder(
+                                    controller: _scrollController,
+                                    padding: EdgeInsets.zero,
+                                    reverse: true,
+                                    itemCount: messages.length,
+                                    itemBuilder: (context, index) {
+                                      return ChatBubble(
+                                        message: messages[index],
+                                        user: widget.user,
+                                        currentUser: widget.currentUser,
+                                        isMe:
+                                            messages[index].senderId ==
+                                            currentUserId,
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
                             );
                           },
                         ),
                       ),
                     ),
-                  SizedBox(height: 70),
+                  const SizedBox(height: 70),
                 ],
               ),
             ),
+
             AnimatedPositioned(
               height: 70,
               duration: const Duration(milliseconds: 200),

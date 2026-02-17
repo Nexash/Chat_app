@@ -1,3 +1,4 @@
+import 'package:chat_app/Controller/chat_controller.dart';
 import 'package:chat_app/Controller/user_controller.dart';
 import 'package:chat_app/Service/auth_service.dart';
 import 'package:chat_app/UI/HomeScreen.dart';
@@ -52,9 +53,10 @@ class AuthController {
   Future<void> logout(BuildContext context) async {
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
-
+      ChatController().disposeAll();
       if (currentUser != null) {
         await userController.updateOnlineStatus(currentUser.uid, false);
+
         authService.signOut();
       }
 
