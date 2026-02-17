@@ -10,6 +10,7 @@ class ChatModel {
   final String? lastMassageSender;
   final List<String> participants;
   final List<String> activeParticipants;
+  final List<String> typingUsers;
   final String? lastMessage;
   @JsonKey(
     fromJson: ChatModel.nullableTimestampFromJson,
@@ -25,6 +26,7 @@ class ChatModel {
     this.lastMessageTime,
     this.lastMassageSender,
     this.lastMessageRead,
+    this.typingUsers = const [],
   });
 
   factory ChatModel.fromJson(Map<String, dynamic> json) =>

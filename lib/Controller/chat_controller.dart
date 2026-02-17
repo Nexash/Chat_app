@@ -208,7 +208,7 @@ class ChatController {
     });
   }
 
-  // ─── Send Message ──────────────────────────────────────────────────────────
+  //  Send Message
 
   Future<void> sendMessage({
     required String chatId,
@@ -248,7 +248,42 @@ class ChatController {
     await batch.commit();
   }
 
-  // ─── Read Receipts ─────────────────────────────────────────────────────────
+  // delete message
+  Future<void> deleteMessage({
+    required String chatId,
+    required String messageId,
+  }) async {
+    await _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .doc(messageId)
+        .delete();
+
+    // Remove from local cache immediately so UI updates instantly
+    final existing = _dataCache[chatId] ?? [];
+    _dataCache[chatId] = existing.where((m) => m.id != messageId).toList();
+
+    // Push updated cache to stream
+    final controller = _controllers[chatId];
+    if (controller != null && !controller.isClosed) {
+      controller.add(_dataCache[chatId]!);
+    }
+
+    log('[$chatId] Message $messageId deleted.');
+  }
+
+  //typing controller
+  Future<void> setTyping(String chatId, String userId, bool isTyping) async {
+    await _firestore.collection('chats').doc(chatId).update({
+      'typingUsers':
+          isTyping
+              ? FieldValue.arrayUnion([userId])
+              : FieldValue.arrayRemove([userId]),
+    });
+  }
+
+  //Read Receipts
 
   Stream<DocumentSnapshot> getChatRoomData(String chatId) =>
       _firestore.collection('chats').doc(chatId).snapshots();

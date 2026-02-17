@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:chat_app/Controller/chat_controller.dart';
 import 'package:chat_app/Modal/message_model.dart';
 import 'package:chat_app/Modal/user_modal.dart';
 import 'package:chat_app/UI/widget/chat_bubble.dart';
+import 'package:chat_app/UI/widget/typing_indicator.dart';
 import 'package:chat_app/UI/widget/user_avatar.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -38,6 +41,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   bool _isLoadingMore = false;
   bool _userHasScrolled = false;
+  Timer? _typingTimer;
+  bool _otherIsTyping = false;
 
   @override
   void initState() {
@@ -102,6 +107,17 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  void _onTyping() {
+    // Tell Firestore user is typing
+    _chatController.setTyping(chatId!, currentUserId, true);
+
+    // Reset the 1-second countdown on every keystroke
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 1), () {
+      _chatController.setTyping(chatId!, currentUserId, false);
+    });
+  }
+
   Future<void> sendMessage() async {
     if (_messageController.text.trim().isNotEmpty) {
       String messageText = _messageController.text.trim();
@@ -128,9 +144,9 @@ class _ChatScreenState extends State<ChatScreen> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         resizeToAvoidBottomInset: false,
-        backgroundColor: Colors.deepPurple[200],
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          backgroundColor: Colors.deepPurple[400],
+          // backgroundColor: Colors.deepPurple[400],
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () async {
@@ -164,6 +180,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
             ],
+          ),
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(5), // Adds 10 pixels of extra height
+            child: SizedBox(), // Just empty space
           ),
         ),
         body: Stack(
@@ -240,21 +260,70 @@ class _ChatScreenState extends State<ChatScreen> {
                                   ),
 
                                 Expanded(
-                                  child: ListView.builder(
-                                    controller: _scrollController,
-                                    padding: EdgeInsets.zero,
-                                    reverse: true,
-                                    itemCount: messages.length,
-                                    itemBuilder: (context, index) {
-                                      return ChatBubble(
-                                        message: messages[index],
-                                        user: widget.user,
-                                        currentUser: widget.currentUser,
-                                        isMe:
-                                            messages[index].senderId ==
-                                            currentUserId,
-                                      );
-                                    },
+                                  child: Stack(
+                                    children: [
+                                      ListView.builder(
+                                        controller: _scrollController,
+                                        padding: EdgeInsets.only(
+                                          bottom: _otherIsTyping ? 50 : 0,
+                                        ),
+                                        reverse: true,
+                                        itemCount: messages.length,
+                                        itemBuilder: (context, index) {
+                                          return ChatBubble(
+                                            message: messages[index],
+                                            user: widget.user,
+                                            currentUser: widget.currentUser,
+                                            isMe:
+                                                messages[index].senderId ==
+                                                currentUserId,
+                                            chatId: chatId!,
+                                          );
+                                        },
+                                      ),
+                                      Positioned(
+                                        bottom: 0,
+                                        left: 0,
+                                        right: 0,
+                                        child: StreamBuilder<DocumentSnapshot>(
+                                          stream: _chatController
+                                              .getChatRoomData(chatId!),
+                                          builder: (context, snap) {
+                                            if (!snap.hasData) {
+                                              return const SizedBox.shrink();
+                                            }
+                                            final data =
+                                                snap.data!.data()
+                                                    as Map<String, dynamic>?;
+                                            final typingUsers =
+                                                List<String>.from(
+                                                  data?['typingUsers'] ?? [],
+                                                );
+                                            final isTyping = typingUsers.any(
+                                              (id) => id != currentUserId,
+                                            );
+
+                                            // Update state so ListView padding reacts
+                                            if (isTyping != _otherIsTyping) {
+                                              WidgetsBinding.instance
+                                                  .addPostFrameCallback((_) {
+                                                    if (mounted) {
+                                                      setState(
+                                                        () =>
+                                                            _otherIsTyping =
+                                                                isTyping,
+                                                      );
+                                                    }
+                                                  });
+                                            }
+
+                                            return isTyping
+                                                ? const TypingIndicator()
+                                                : const SizedBox.shrink();
+                                          },
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -305,6 +374,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             minLines: 1,
                             maxLines: 2,
                             controller: _messageController,
+                            onChanged: (_) => _onTyping(),
                             decoration: const InputDecoration(
                               hintText: "Type a message...",
                               contentPadding: EdgeInsets.symmetric(

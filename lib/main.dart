@@ -30,6 +30,7 @@ class MyApp extends StatelessWidget {
           title: 'Flutter Demo',
           // LIGHT THEME
           theme: ThemeData(
+            cardColor: Colors.deepPurple[100],
             scaffoldBackgroundColor: Colors.deepPurple[100],
             appBarTheme: AppBarTheme(
               backgroundColor: Colors.deepPurple[400],
@@ -38,7 +39,8 @@ class MyApp extends StatelessWidget {
           ),
           // DARK THEME
           darkTheme: ThemeData(
-            scaffoldBackgroundColor: const Color.fromARGB(255, 240, 206, 193),
+            cardColor: const Color.fromARGB(255, 254, 217, 202),
+            scaffoldBackgroundColor: const Color.fromARGB(255, 254, 217, 202),
             appBarTheme: AppBarTheme(
               backgroundColor: const Color.fromARGB(255, 47, 22, 12),
               foregroundColor: const Color.fromARGB(255, 255, 255, 255),
