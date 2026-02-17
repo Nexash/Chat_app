@@ -1,14 +1,20 @@
-import 'package:chat_app/UI/HomeScreen.dart';
+import 'package:chat_app/Provider/theme_provider.dart';
 import 'package:chat_app/UI/login_screen.dart';
 import 'package:chat_app/firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -16,30 +22,42 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        fontFamilyFallback: const ['MyCustomFont'],
-        useMaterial3: true,
-      ),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          themeMode: themeProvider.themeMode,
+          debugShowCheckedModeBanner: false,
+          title: 'Flutter Demo',
+          // LIGHT THEME
+          theme: ThemeData(
+            scaffoldBackgroundColor: Colors.deepPurple[100],
+            appBarTheme: AppBarTheme(
+              backgroundColor: Colors.deepPurple[400],
+              foregroundColor: Colors.white,
+            ),
+          ),
+          // DARK THEME
+          darkTheme: ThemeData(
+            scaffoldBackgroundColor: const Color.fromARGB(255, 240, 206, 193),
+            appBarTheme: AppBarTheme(
+              backgroundColor: const Color.fromARGB(255, 47, 22, 12),
+              foregroundColor: const Color.fromARGB(255, 255, 255, 255),
+            ),
+          ),
+          home: StreamBuilder<User?>(
+            stream: FirebaseAuth.instance.authStateChanges(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
 
-          if (snapshot.hasData) {
-            return const HomeScreen();
-          }
-
-          return const LoginScreen();
-        },
-      ),
+              return const LoginScreen();
+            },
+          ),
+        );
+      },
     );
   }
 }

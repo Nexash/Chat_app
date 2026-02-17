@@ -9,6 +9,12 @@ class UserController {
   UserModal? currentUser;
   AuthService authService = AuthService();
 
+  static Stream<List<UserModal>>? _persistentStream;
+
+  void clearPersistentStream() {
+    _persistentStream = null;
+  }
+
   Future<void> saveUserData(User user) async {
     try {
       await _firestore.collection(_usersCollection).doc(user.uid).set({
@@ -42,12 +48,14 @@ class UserController {
   }
 
   Stream<List<UserModal>> getUsersExcluding(String currentUserId) {
-    return getAllUsers().map((snapshot) {
+    _persistentStream ??= getAllUsers().map((snapshot) {
       return snapshot.docs
           .where((doc) => doc.id != currentUserId)
           .map((doc) => UserModal.fromDocument(doc))
           .toList();
     });
+
+    return _persistentStream!;
   }
 
   Stream<UserModal> getUserStream(String uid) {

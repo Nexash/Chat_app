@@ -10,19 +10,6 @@ class AuthController {
   AuthService authService = AuthService();
   UserController userController = UserController();
 
-  // Future<void> handleGoogleSignIn() async {
-  //   try {
-  //     User? user = await authService.loginWithGoogle(forceAccountPicker: true);
-
-  //     if (user != null) {
-  //       await userController.saveUserData(user);
-  //       log("User saved successfully: ${user.displayName}");
-  //     }
-  //   } catch (e) {
-  //     log("google sign in error: $e");
-  //   }
-  // }
-
   void handleLogin(BuildContext context) async {
     try {
       User? user = await authService.loginWithGoogle(forceAccountPicker: true);

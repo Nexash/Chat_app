@@ -2,9 +2,11 @@ import 'package:chat_app/Controller/auth_controller.dart';
 import 'package:chat_app/Controller/chat_controller.dart';
 import 'package:chat_app/Controller/user_controller.dart';
 import 'package:chat_app/Modal/user_modal.dart';
+import 'package:chat_app/Provider/theme_provider.dart';
 import 'package:chat_app/UI/widget/user_tile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -49,19 +51,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     return Scaffold(
-      backgroundColor: Colors.deepPurple[200],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.deepPurple[400],
         title: Text(
           "SPILL - SOME - TEA",
           style: TextStyle(fontSize: 25, color: Colors.white),
         ),
         actions: [
+          Selector<ThemeProvider, ThemeMode>(
+            selector: (_, provider) => provider.themeMode,
+            builder: (context, currentTheme, child) {
+              return IconButton(
+                icon: Icon(
+                  // Change icon based on current theme
+                  currentTheme == ThemeMode.dark
+                      ? Icons.light_mode
+                      : Icons.dark_mode,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  final provider = Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  );
+                  provider.toggleTheme(provider.themeMode == ThemeMode.light);
+                },
+              );
+            },
+          ),
           IconButton(
             iconSize: 22,
             onPressed: () {
+              userController.clearPersistentStream();
               authController.logout(context);
             },
             icon: Icon(Icons.logout, color: Colors.white),
@@ -81,33 +104,37 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 width: MediaQuery.of(context).size.width,
 
                 child: StreamBuilder<List<UserModal>>(
-                  stream: userController.getUsersExcluding(currentUserId),
+                  stream: userController.getUsersExcluding(uid),
                   builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      final users = snapshot.data ?? [];
+
+                      if (users.isEmpty) {
+                        return const Center(child: Text("No Users found"));
+                      }
+
+                      return ListView.builder(
+                        itemCount: users.length,
+                        itemBuilder: (context, index) {
+                          final user = users[index];
+                          return UserTile(
+                            user: user,
+                            chatController: chatController,
+                            userController: userController,
+                          );
+                        },
+                      );
+                    }
+
                     if (snapshot.hasError) {
-                      return Center(child: Text("Cant load Users"));
+                      return const Center(child: Text("Cant load Users"));
                     }
+
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(child: CircularProgressIndicator());
-                    }
-                    final users = snapshot.data ?? [];
-
-                    if (users.isEmpty) {
-                      return Center(child: Text("No Users found"));
+                      return const Center(child: CircularProgressIndicator());
                     }
 
-                    return ListView.builder(
-                      // padding: const EdgeInsets.all(8),
-                      itemCount: users.length,
-                      itemBuilder: (context, index) {
-                        final user = users[index];
-
-                        return UserTile(
-                          user: user,
-                          chatController: chatController,
-                          userController: userController,
-                        );
-                      },
-                    );
+                    return const Center(child: Text("No Users found"));
                   },
                 ),
               ),
