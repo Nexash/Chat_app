@@ -1,6 +1,4 @@
-import 'package:chat_app/Service/auth_service.dart';
-import 'package:chat_app/UI/HomeScreen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:chat_app/Controller/auth_controller.dart';
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -11,35 +9,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  AuthService authService = AuthService();
-  bool _isLoading = false;
-
-  void handleLogin() async {
-    setState(() => _isLoading = true);
-
-    AuthService authService = AuthService();
-    User? user = await authService.loginWithGoogle(forceAccountPicker: true);
-
-    if (user != null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Login Successful! ."),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      }
-    } else {
-      // 3. If login failed or was cancelled, stop loading
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
+  AuthController authController = AuthController();
+  final bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(height: MediaQuery.of(context).size.height * 0.15),
                   FilledButton.tonalIcon(
                     onPressed: () async {
-                      handleLogin();
+                      authController.handleLogin(context);
                     },
 
                     label: const Text(

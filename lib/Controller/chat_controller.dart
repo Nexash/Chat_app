@@ -4,8 +4,16 @@ import 'package:chat_app/Modal/message_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChatController {
+  static final ChatController _instance = ChatController._internal();
+
+  factory ChatController() {
+    return _instance;
+  }
+
+  ChatController._internal();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Map<String, Stream<List<MessageModel>>> _streamCache = {};
+  final Map<String, List<MessageModel>> _dataCache = {};
 
   Future<String> getOrCreateChat(String uid1, String uid2) async {
     List<String> ids = [uid1, uid2];
@@ -90,9 +98,13 @@ class ChatController {
             .orderBy('timestamp', descending: true)
             .snapshots()
             .map((snapshot) {
-              return snapshot.docs
-                  .map((doc) => MessageModel.fromDocument(doc))
-                  .toList();
+              final messages =
+                  snapshot.docs
+                      .map((doc) => MessageModel.fromDocument(doc))
+                      .toList();
+              _dataCache[chatId] = messages;
+
+              return messages;
             })
             .distinct((prev, next) {
               if (prev.length != next.length) return false;
@@ -105,6 +117,8 @@ class ChatController {
     _streamCache[chatId] = stream;
     return stream;
   }
+
+  List<MessageModel>? getCachedMessages(String chatId) => _dataCache[chatId];
 
   Stream<DocumentSnapshot> getChatRoomData(String chatId) {
     return _firestore.collection('chats').doc(chatId).snapshots();

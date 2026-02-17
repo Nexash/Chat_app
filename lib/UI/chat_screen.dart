@@ -1,9 +1,10 @@
 import 'dart:developer';
 
 import 'package:chat_app/Controller/chat_controller.dart';
-import 'package:chat_app/Helper/format_message_time.dart';
 import 'package:chat_app/Modal/message_model.dart';
 import 'package:chat_app/Modal/user_modal.dart';
+import 'package:chat_app/UI/widget/chat_bubble.dart';
+import 'package:chat_app/UI/widget/user_avatar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -115,20 +116,13 @@ class _ChatScreenState extends State<ChatScreen> {
             mainAxisAlignment: MainAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundImage:
-                    widget.user.photoUrl.isNotEmpty ? userImage : null,
-                child:
-                    widget.user.photoUrl.isEmpty
-                        ? const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 16,
-                        )
-                        : null,
+              UserAvatar(
+                url: widget.user.photoUrl,
+                size: 22,
+                isonline: widget.user.isOnline,
               ),
-              const SizedBox(width: 12),
+
+              SizedBox(width: 12),
               Expanded(
                 child: Text(
                   widget.user.name,
@@ -164,7 +158,9 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                         child: StreamBuilder<List<MessageModel>>(
                           stream: _messageStream,
-
+                          initialData: _chatController.getCachedMessages(
+                            chatId!,
+                          ),
                           builder: (context, snapshot) {
                             if (snapshot.hasError) {
                               return Text("Error: ${snapshot.error}");
@@ -201,10 +197,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
                               itemCount: messages.length,
                               itemBuilder: (context, index) {
-                                return _buildMessageBubble(
-                                  messages[index],
-                                  messages[index].senderId == currentUserId,
-                                  widget.user,
+                                return ChatBubble(
+                                  message: messages[index],
+                                  user: widget.user,
+                                  currentUser: widget.currentUser,
+                                  isMe:
+                                      messages[index].senderId == currentUserId,
                                 );
                               },
                             );
@@ -283,111 +281,6 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildMessageBubble(MessageModel message, bool isMe, UserModal user) {
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Row(
-        mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          if (!isMe)
-            Padding(
-              padding: const EdgeInsets.only(left: 5, bottom: 5),
-              child: CircleAvatar(
-                radius: 16, // Slightly larger for the AppBar
-                backgroundImage:
-                    widget.user.photoUrl.isNotEmpty ? userImage : null,
-                child:
-                    widget.user.photoUrl.isEmpty
-                        ? const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 16,
-                        )
-                        : null,
-              ),
-            ),
-          Flexible(
-            child: Padding(
-              padding:
-                  isMe ? EdgeInsets.only(left: 32) : EdgeInsets.only(right: 32),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                decoration: BoxDecoration(
-                  color: isMe ? Colors.deepPurple[400] : Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(12),
-                    topRight: const Radius.circular(12),
-                    bottomLeft:
-                        isMe
-                            ? const Radius.circular(12)
-                            : const Radius.circular(0),
-                    bottomRight:
-                        isMe
-                            ? const Radius.circular(0)
-                            : const Radius.circular(12),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment:
-                      isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      message.text,
-                      style: TextStyle(
-                        color: isMe ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          formatMessageTime(message.timestamp.toString()),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 10,
-                            color: isMe ? Colors.white70 : Colors.black54,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        if (isMe)
-                          Icon(
-                            message.read ? Icons.done_all : Icons.done_all,
-                            size: 15,
-                            color: message.read ? Colors.blue : Colors.grey,
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          if (isMe)
-            Padding(
-              padding: const EdgeInsets.only(right: 5, bottom: 5),
-              child: CircleAvatar(
-                radius: 16,
-                backgroundImage:
-                    widget.currentUser.photoUrl.isNotEmpty
-                        ? currentUserImage
-                        : null,
-                child:
-                    widget.user.photoUrl.isEmpty
-                        ? const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 16,
-                        )
-                        : null,
-              ),
-            ),
-        ],
       ),
     );
   }

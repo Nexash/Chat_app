@@ -1,12 +1,10 @@
 import 'dart:developer';
 
-import 'package:chat_app/Controller/user_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   static User? user = FirebaseAuth.instance.currentUser;
-  UserController userController = UserController();
 
   Future<User?> loginWithGoogle({bool forceAccountPicker = false}) async {
     try {
@@ -25,23 +23,16 @@ class AuthService {
       final userCredential = await FirebaseAuth.instance.signInWithCredential(
         credential,
       );
-      if (userCredential.user != null) {
-        await userController.saveUserData(userCredential.user!);
-      }
+
       log("${userCredential.user}");
       return userCredential.user;
     } catch (e) {
       log(e.toString());
-      return null;
+      rethrow;
     }
   }
 
   Future<void> signOut() async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      // Update user to offline before signing out
-      await userController.updateOnlineStatus(currentUser.uid, false);
-    }
     await FirebaseAuth.instance.signOut();
     await GoogleSignIn().signOut();
   }
