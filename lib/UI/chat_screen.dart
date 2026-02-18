@@ -186,225 +186,233 @@ class _ChatScreenState extends State<ChatScreen> {
             child: SizedBox(), // Just empty space
           ),
         ),
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: Column(
-                children: [
-                  if (chatId == null)
-                    const Center(child: CircularProgressIndicator())
-                  else
-                    Expanded(
-                      child: AnimatedPadding(
-                        duration: const Duration(milliseconds: 400),
-                        curve: Curves.fastEaseInToSlowEaseOut,
-                        padding: EdgeInsets.only(
-                          bottom: keyboardHeight > 0 ? keyboardHeight : 0,
-                        ),
-                        child: StreamBuilder<List<MessageModel>>(
-                          stream: _messageStream,
-                          initialData: _chatController.getCachedMessages(
-                            chatId!,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Column(
+                  children: [
+                    if (chatId == null)
+                      const Center(child: CircularProgressIndicator())
+                    else
+                      Expanded(
+                        child: AnimatedPadding(
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.fastEaseInToSlowEaseOut,
+                          padding: EdgeInsets.only(
+                            bottom: keyboardHeight > 0 ? keyboardHeight : 0,
                           ),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasError) {
-                              return Text("Error: ${snapshot.error}");
-                            }
-
-                            if (snapshot.connectionState ==
-                                    ConnectionState.waiting &&
-                                !snapshot.hasData) {
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            }
-
-                            final messages = snapshot.data ?? [];
-
-                            if (messages.isNotEmpty) {
-                              final latestMessage = messages.first;
-                              if (latestMessage.senderId != currentUserId &&
-                                  !latestMessage.read) {
-                                WidgetsBinding.instance.addPostFrameCallback((
-                                  _,
-                                ) {
-                                  _chatController.markMessagesAsRead(
-                                    chatId!,
-                                    currentUserId,
-                                  );
-                                });
+                          child: StreamBuilder<List<MessageModel>>(
+                            stream: _messageStream,
+                            initialData: _chatController.getCachedMessages(
+                              chatId!,
+                            ),
+                            builder: (context, snapshot) {
+                              if (snapshot.hasError) {
+                                return Text("Error: ${snapshot.error}");
                               }
-                            }
 
-                            return Column(
-                              children: [
-                                if (!_chatController.hasMore(chatId!) &&
-                                    messages.isNotEmpty)
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8),
-                                    // child: Text(
-                                    //   "Start of conversation",
-                                    //   style: TextStyle(
-                                    //     color: Colors.white70,
-                                    //     fontSize: 12,
-                                    //   ),
-                                    // ),
-                                  ),
-                                if (_isLoadingMore)
-                                  const Padding(
-                                    padding: EdgeInsets.all(6),
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
+                              if (snapshot.connectionState ==
+                                      ConnectionState.waiting &&
+                                  !snapshot.hasData) {
+                                return const Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              }
 
-                                Expanded(
-                                  child: Stack(
-                                    children: [
-                                      ListView.builder(
-                                        controller: _scrollController,
-                                        padding: EdgeInsets.only(
-                                          bottom: _otherIsTyping ? 50 : 0,
-                                        ),
-                                        reverse: true,
-                                        itemCount: messages.length,
-                                        itemBuilder: (context, index) {
-                                          return ChatBubble(
-                                            message: messages[index],
-                                            user: widget.user,
-                                            currentUser: widget.currentUser,
-                                            isMe:
-                                                messages[index].senderId ==
-                                                currentUserId,
-                                            chatId: chatId!,
-                                            currentUserId: currentUserId,
-                                          );
-                                        },
+                              final messages = snapshot.data ?? [];
+
+                              if (messages.isNotEmpty) {
+                                final latestMessage = messages.first;
+                                if (latestMessage.senderId != currentUserId &&
+                                    !latestMessage.read) {
+                                  WidgetsBinding.instance.addPostFrameCallback((
+                                    _,
+                                  ) {
+                                    _chatController.markMessagesAsRead(
+                                      chatId!,
+                                      currentUserId,
+                                    );
+                                  });
+                                }
+                              }
+
+                              return Column(
+                                children: [
+                                  if (!_chatController.hasMore(chatId!) &&
+                                      messages.isNotEmpty)
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 8,
                                       ),
-                                      Positioned(
-                                        bottom: 0,
-                                        left: 0,
-                                        right: 0,
-                                        child: StreamBuilder<DocumentSnapshot>(
-                                          stream: _chatController
-                                              .getChatRoomData(chatId!),
-                                          builder: (context, snap) {
-                                            if (!snap.hasData) {
-                                              return const SizedBox.shrink();
-                                            }
-                                            final data =
-                                                snap.data!.data()
-                                                    as Map<String, dynamic>?;
-                                            final typingUsers =
-                                                List<String>.from(
-                                                  data?['typingUsers'] ?? [],
-                                                );
-                                            final isTyping = typingUsers.any(
-                                              (id) => id != currentUserId,
+                                      // child: Text(
+                                      //   "Start of conversation",
+                                      //   style: TextStyle(
+                                      //     color: Colors.white70,
+                                      //     fontSize: 12,
+                                      //   ),
+                                      // ),
+                                    ),
+                                  if (_isLoadingMore)
+                                    const Padding(
+                                      padding: EdgeInsets.all(6),
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+
+                                  Expanded(
+                                    child: Stack(
+                                      children: [
+                                        ListView.builder(
+                                          controller: _scrollController,
+                                          padding: EdgeInsets.only(
+                                            bottom: _otherIsTyping ? 50 : 0,
+                                          ),
+                                          reverse: true,
+                                          itemCount: messages.length,
+                                          itemBuilder: (context, index) {
+                                            return ChatBubble(
+                                              message: messages[index],
+                                              user: widget.user,
+                                              currentUser: widget.currentUser,
+                                              isMe:
+                                                  messages[index].senderId ==
+                                                  currentUserId,
+                                              chatId: chatId!,
+                                              currentUserId: currentUserId,
                                             );
-
-                                            // Update state so ListView padding reacts
-                                            if (isTyping != _otherIsTyping) {
-                                              WidgetsBinding.instance
-                                                  .addPostFrameCallback((_) {
-                                                    if (mounted) {
-                                                      setState(
-                                                        () =>
-                                                            _otherIsTyping =
-                                                                isTyping,
-                                                      );
-                                                    }
-                                                  });
-                                            }
-
-                                            return isTyping
-                                                ? const TypingIndicator()
-                                                : const SizedBox.shrink();
                                           },
                                         ),
-                                      ),
-                                    ],
+                                        Positioned(
+                                          bottom: 0,
+                                          left: 0,
+                                          right: 0,
+                                          child: StreamBuilder<
+                                            DocumentSnapshot
+                                          >(
+                                            stream: _chatController
+                                                .getChatRoomData(chatId!),
+                                            builder: (context, snap) {
+                                              if (!snap.hasData) {
+                                                return const SizedBox.shrink();
+                                              }
+                                              final data =
+                                                  snap.data!.data()
+                                                      as Map<String, dynamic>?;
+                                              final typingUsers =
+                                                  List<String>.from(
+                                                    data?['typingUsers'] ?? [],
+                                                  );
+                                              final isTyping = typingUsers.any(
+                                                (id) => id != currentUserId,
+                                              );
+
+                                              // Update state so ListView padding reacts
+                                              if (isTyping != _otherIsTyping) {
+                                                WidgetsBinding.instance
+                                                    .addPostFrameCallback((_) {
+                                                      if (mounted) {
+                                                        setState(
+                                                          () =>
+                                                              _otherIsTyping =
+                                                                  isTyping,
+                                                        );
+                                                      }
+                                                    });
+                                              }
+
+                                              return isTyping
+                                                  ? const TypingIndicator()
+                                                  : const SizedBox.shrink();
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
-                            );
-                          },
+                                ],
+                              );
+                            },
+                          ),
                         ),
                       ),
-                    ),
-                  const SizedBox(height: 70),
-                ],
+                    const SizedBox(height: 70),
+                  ],
+                ),
               ),
-            ),
 
-            AnimatedPositioned(
-              height: 70,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.fastEaseInToSlowEaseOut,
-              left: 0,
-              right: 0,
-              bottom: keyboardHeight,
-              child: ClipRRect(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 0,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    border: Border(
-                      top: BorderSide(color: Colors.transparent, width: 0.5),
+              AnimatedPositioned(
+                height: 70,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.fastEaseInToSlowEaseOut,
+                left: 0,
+                right: 0,
+                bottom: keyboardHeight,
+                child: ClipRRect(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 0,
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(25),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      border: Border(
+                        top: BorderSide(color: Colors.transparent, width: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(25),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: TextField(
+                              autofocus: false,
+                              minLines: 1,
+
+                              maxLines: 2,
+                              controller: _messageController,
+                              onChanged: (_) => _onTyping(),
+                              decoration: const InputDecoration(
+                                hintText: "Type a message...",
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10,
+                                ),
+                                border: InputBorder.none,
                               ),
-                            ],
-                          ),
-                          child: TextField(
-                            minLines: 1,
-                            maxLines: 2,
-                            controller: _messageController,
-                            onChanged: (_) => _onTyping(),
-                            decoration: const InputDecoration(
-                              hintText: "Type a message...",
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 10,
-                              ),
-                              border: InputBorder.none,
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      CircleAvatar(
-                        backgroundColor: Colors.deepPurple[400],
-                        child: IconButton(
-                          onPressed: sendMessage,
-                          icon: const Icon(
-                            Icons.send,
-                            color: Colors.white,
-                            size: 20,
+                        const SizedBox(width: 8),
+                        CircleAvatar(
+                          backgroundColor: Colors.deepPurple[400],
+                          child: IconButton(
+                            onPressed: sendMessage,
+                            icon: const Icon(
+                              Icons.send,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

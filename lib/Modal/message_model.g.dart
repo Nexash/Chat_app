@@ -18,6 +18,7 @@ MessageModel _$MessageModelFromJson(Map<String, dynamic> json) => MessageModel(
         (k, e) => MapEntry(k, e as String),
       ) ??
       const {},
+  isEdited: json['isEdited'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$MessageModelToJson(MessageModel instance) =>
@@ -29,4 +30,5 @@ Map<String, dynamic> _$MessageModelToJson(MessageModel instance) =>
       'read': instance.read,
       'type': instance.type,
       'reactions': instance.reactions,
+      'isEdited': instance.isEdited,
     };

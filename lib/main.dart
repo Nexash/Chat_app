@@ -36,6 +36,11 @@ class MyApp extends StatelessWidget {
               backgroundColor: Colors.deepPurple[400],
               foregroundColor: Colors.white,
             ),
+            bottomSheetTheme: BottomSheetThemeData(
+              backgroundColor: const Color.fromARGB(245, 179, 157, 219),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            ),
           ),
           // DARK THEME
           darkTheme: ThemeData(
@@ -44,6 +49,11 @@ class MyApp extends StatelessWidget {
             appBarTheme: AppBarTheme(
               backgroundColor: const Color.fromARGB(255, 47, 22, 12),
               foregroundColor: const Color.fromARGB(255, 255, 255, 255),
+            ),
+            bottomSheetTheme: BottomSheetThemeData(
+              backgroundColor: const Color.fromARGB(244, 250, 209, 192),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             ),
           ),
           home: StreamBuilder<User?>(

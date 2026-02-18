@@ -6,6 +6,7 @@ import 'package:chat_app/Provider/theme_provider.dart';
 import 'package:chat_app/UI/widget/build_clickable_text.dart';
 import 'package:chat_app/UI/widget/user_avatar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 class ChatBubble extends StatefulWidget {
@@ -31,224 +32,250 @@ class ChatBubble extends StatefulWidget {
 }
 
 class _ChatBubbleState extends State<ChatBubble> {
-  OverlayEntry? _emojiOverlay;
+  bool _showEmojiBar = false;
+  ChatController chatController = ChatController();
+  final TextEditingController _messageController = TextEditingController();
 
-  void _showEmojiBar(BuildContext context) {
-    _removeEmojiBar();
-
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final position = renderBox.localToGlobal(Offset.zero);
-    final size = renderBox.size;
-
-    _emojiOverlay = OverlayEntry(
-      builder:
-          (context) => Positioned(
-            left: widget.isMe ? null : position.dx + 8,
-            right:
-                widget.isMe
-                    ? MediaQuery.of(context).size.width -
-                        position.dx -
-                        size.width +
-                        8
-                    : null,
-            top: position.dy + size.height + 4,
-            child: Material(
-              color: Colors.transparent,
-              child: GestureDetector(
-                onTap: _removeEmojiBar, // Dismiss on outside tap
-                behavior: HitTestBehavior.translucent,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ...['👍', '❤️', '😂', '😮', '😢', '👀'].map((emoji) {
-                        final isSelected =
-                            widget.message.reactions[widget.currentUserId] ==
-                            emoji;
-                        return GestureDetector(
-                          onTap: () async {
-                            _removeEmojiBar();
-                            if (Navigator.canPop(context)) {
-                              Navigator.pop(context);
-                            }
-                            if (isSelected) {
-                              await ChatController().removeReaction(
-                                chatId: widget.chatId,
-                                messageId: widget.message.id,
-                                userId: widget.currentUserId,
-                              );
-                            } else {
-                              await ChatController().addReaction(
-                                chatId: widget.chatId,
-                                messageId: widget.message.id,
-                                userId: widget.currentUserId,
-                                emoji: emoji,
-                              );
-                            }
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color:
-                                  isSelected
-                                      ? Colors.deepPurple[100]
-                                      : Colors.transparent,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              emoji,
-                              style: const TextStyle(fontSize: 20),
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-    );
-
-    Overlay.of(context).insert(_emojiOverlay!);
+  void _toggleEmojiBar() {
+    setState(() => _showEmojiBar = !_showEmojiBar);
   }
 
-  void _removeEmojiBar() {
-    _emojiOverlay?.remove();
-    _emojiOverlay = null;
-  }
-
-  void _showOptionsSheet(BuildContext context) {
-    final hasReacted = widget.message.reactions.containsKey(
-      widget.currentUserId,
-    );
-
+  void _showEditBox(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      isScrollControlled: true,
+      barrierColor: Colors.transparent,
       builder:
           (context) => Consumer<ThemeProvider>(
             builder: (context, themeProvider, child) {
-              bool isDark = themeProvider.themeMode == ThemeMode.dark;
-              return SafeArea(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      child: Column(
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: SafeArea(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          if (widget.isMe)
-                            Card(
-                              elevation: 4,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              color:
-                                  isDark
-                                      ? Colors.deepPurple[100]
-                                      : const Color.fromARGB(
-                                        255,
-                                        254,
-                                        217,
-                                        202,
-                                      ),
-                              child: ListTile(
-                                leading: const Icon(
-                                  Icons.delete_outline,
-                                  color: Colors.red,
-                                ),
-                                title: const Text(
-                                  'Delete message',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                                onTap: () async {
-                                  _removeEmojiBar();
-                                  Navigator.pop(context);
-                                  try {
-                                    await ChatController().deleteMessage(
-                                      chatId: widget.chatId,
-                                      messageId: widget.message.id,
-                                    );
-                                  } catch (e) {
-                                    debugPrint("Delete failed: $e");
-                                  }
-                                },
-                              ),
+                          const Padding(
+                            padding: EdgeInsets.only(left: 10.0),
+                            child: Text(
+                              "Edit message",
+                              style: TextStyle(fontSize: 12),
                             ),
-
-                          // Remove reaction
-                          if (hasReacted)
-                            Card(
-                              elevation: 4,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              color:
-                                  isDark
-                                      ? Colors.deepPurple[100]
-                                      : const Color.fromARGB(
-                                        255,
-                                        254,
-                                        217,
-                                        202,
-                                      ),
-                              child: ListTile(
-                                leading: const Icon(
-                                  Icons.cancel_outlined,
-                                  color: Colors.grey,
-                                ),
-                                title: const Text('Remove reaction'),
-                                onTap: () async {
-                                  Navigator.pop(context);
-                                  await ChatController().removeReaction(
-                                    chatId: widget.chatId,
-                                    messageId: widget.message.id,
-                                    userId: widget.currentUserId,
-                                  );
-                                },
-                              ),
-                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.close),
+                            iconSize: 20,
+                            padding: const EdgeInsets.all(12),
+                            splashRadius: 28,
+                          ),
                         ],
                       ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(25),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 10,
+                                    ),
+                                  ],
+                                ),
+                                child: TextField(
+                                  minLines: 1,
+                                  maxLines: 2,
+                                  controller: _messageController,
+                                  decoration: const InputDecoration(
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 10,
+                                    ),
+                                    border: InputBorder.none,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            CircleAvatar(
+                              backgroundColor: Colors.deepPurple[400],
+                              child: IconButton(
+                                onPressed: () async {
+                                  try {
+                                    await chatController.editMessage(
+                                      chatId: widget.chatId,
+                                      messageId: widget.message.id,
+                                      newText: _messageController.text,
+                                    );
+                                    FocusManager.instance.primaryFocus
+                                        ?.unfocus();
+                                    if (context.mounted) Navigator.pop(context);
+                                  } catch (e) {
+                                    debugPrint("Error editing: $e");
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Failed to edit message",
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                icon: const Icon(
+                                  Icons.send,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+    );
+  }
+
+  void _showOptionsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      barrierColor: Colors.transparent,
+      isScrollControlled: true,
+      enableDrag: false,
+      routeSettings: const RouteSettings(name: 'options'),
+      builder:
+          (context) => Consumer<ThemeProvider>(
+            builder: (context, themeProvider, child) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: SafeArea(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        if (widget.isMe)
+                          _buildOptionBtn(
+                            icon: Icons.edit_note,
+                            label: "Edit",
+                            color: Colors.black87,
+                            onTap: () {
+                              _messageController.text = widget.message.text;
+                              _messageController
+                                  .selection = TextSelection.fromPosition(
+                                TextPosition(
+                                  offset: _messageController.text.length,
+                                ),
+                              );
+                              Navigator.pop(context);
+                              _showEditBox(context);
+                            },
+                          ),
+                        _buildOptionBtn(
+                          icon: Icons.copy,
+                          label: "Copy",
+                          color: Colors.black87,
+                          onTap: () async {
+                            await Clipboard.setData(
+                              ClipboardData(text: widget.message.text),
+                            );
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text("Copied to clipboard"),
+                                  duration: const Duration(seconds: 1),
+                                  behavior: SnackBarBehavior.floating,
+                                  margin: EdgeInsets.only(
+                                    right: 20,
+                                    left: 20,
+                                    bottom:
+                                        MediaQuery.of(context).size.height *
+                                        0.07,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                        if (widget.isMe)
+                          _buildOptionBtn(
+                            icon: Icons.delete_outline,
+                            label: "Delete",
+                            color: Colors.black87,
+                            onTap: () async {
+                              Navigator.pop(context);
+                              try {
+                                await ChatController().deleteMessage(
+                                  chatId: widget.chatId,
+                                  messageId: widget.message.id,
+                                );
+                              } catch (e) {
+                                debugPrint("Delete failed: $e");
+                              }
+                            },
+                          ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                  ],
+                  ),
                 ),
               );
             },
           ),
     ).then((_) {
-      _removeEmojiBar();
+      if (mounted) {
+        setState(() {
+          _showEmojiBar = false;
+        });
+      }
     });
   }
 
-  @override
-  void dispose() {
-    _removeEmojiBar();
-    super.dispose();
+  Widget _buildOptionBtn({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -262,7 +289,7 @@ class _ChatBubbleState extends State<ChatBubble> {
         padding:
             widget.message.reactions.isNotEmpty
                 ? const EdgeInsets.only(bottom: 8.0)
-                : EdgeInsets.only(bottom: 0),
+                : EdgeInsets.zero,
         child: Row(
           mainAxisAlignment:
               widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -272,96 +299,212 @@ class _ChatBubbleState extends State<ChatBubble> {
             Flexible(
               child: GestureDetector(
                 onLongPress: () {
-                  _showEmojiBar(context);
-                  _showOptionsSheet(context);
+                  _toggleEmojiBar();
+                  // _showOptionsSheet(context);
                 },
-
-                child: Stack(
-                  clipBehavior: Clip.none,
+                child: Column(
+                  crossAxisAlignment:
+                      widget.isMe
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.symmetric(
-                        vertical: 4,
-                        horizontal: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            widget.isMe
-                                ? const Color.fromARGB(207, 126, 87, 194)
-                                : Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(12),
-                          topRight: const Radius.circular(12),
-                          bottomLeft: Radius.circular(widget.isMe ? 12 : 0),
-                          bottomRight: Radius.circular(widget.isMe ? 0 : 12),
-                        ),
-                        boxShadow: [
-                          if (!widget.isMe)
-                            BoxShadow(color: Colors.black12, blurRadius: 2),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment:
-                            widget.isMe
-                                ? CrossAxisAlignment.end
-                                : CrossAxisAlignment.start,
-                        children: [
-                          buildClickableText(widget.message.text, widget.isMe),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                formatMessageTime(
-                                  widget.message.timestamp.toString(),
-                                ),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color:
-                                      widget.isMe
-                                          ? Colors.white70
-                                          : Colors.black54,
-                                ),
-                              ),
-                              if (widget.isMe) ...[
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.done_all,
-                                  size: 15,
-                                  color:
-                                      widget.message.read
-                                          ? Colors.blue
-                                          : Colors.white70,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (widget.message.reactions.isNotEmpty)
-                      Positioned(
-                        bottom: -10,
-                        right: widget.isMe ? 5 : null,
-                        left: widget.isMe ? null : 5,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.symmetric(
+                            vertical: 4,
+                            horizontal: 8,
                           ),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
+                            color:
+                                widget.isMe
+                                    ? const Color.fromARGB(207, 126, 87, 194)
+                                    : Colors.white,
+                            borderRadius: BorderRadius.only(
+                              topLeft: const Radius.circular(12),
+                              topRight: const Radius.circular(12),
+                              bottomLeft: Radius.circular(widget.isMe ? 12 : 0),
+                              bottomRight: Radius.circular(
+                                widget.isMe ? 0 : 12,
+                              ),
+                            ),
                             boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 4,
+                              if (!widget.isMe)
+                                const BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 2,
+                                ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment:
+                                widget.isMe
+                                    ? CrossAxisAlignment.end
+                                    : CrossAxisAlignment.start,
+                            children: [
+                              buildClickableText(
+                                widget.message.text,
+                                widget.isMe,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (widget.message.isEdited)
+                                    const Icon(
+                                      Icons.edit,
+                                      size: 10,
+                                      color: Colors.white70,
+                                    ),
+                                  if (widget.message.isEdited)
+                                    const SizedBox(width: 5),
+                                  Text(
+                                    formatMessageTime(
+                                      widget.message.timestamp.toString(),
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color:
+                                          widget.isMe
+                                              ? Colors.white70
+                                              : Colors.black54,
+                                    ),
+                                  ),
+                                  if (widget.isMe) ...[
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.done_all,
+                                      size: 15,
+                                      color:
+                                          widget.message.read
+                                              ? Colors.blue
+                                              : Colors.white70,
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),
-                          child: Wrap(
-                            spacing: 4,
-                            children: _buildReactionChips(),
+                        ),
+
+                        // Reaction chips (positioned below message)
+                        if (widget.message.reactions.isNotEmpty)
+                          Positioned(
+                            bottom: -10,
+                            right: widget.isMe ? 5 : null,
+                            left: widget.isMe ? null : 5,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: Wrap(
+                                spacing: 4,
+                                children: _buildReactionChips(),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+
+                    // Inline emoji selector (scrolls with message)
+                    if (_showEmojiBar)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 8,
+                          right: 8,
+                          top: 4,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ...['👍', '❤️', '😂', '😮', '😢', '👀'].map((
+                                emoji,
+                              ) {
+                                final isSelected =
+                                    widget.message.reactions[widget
+                                        .currentUserId] ==
+                                    emoji;
+                                return GestureDetector(
+                                  onTap: () async {
+                                    setState(() => _showEmojiBar = false);
+                                    if (isSelected) {
+                                      await ChatController().removeReaction(
+                                        chatId: widget.chatId,
+                                        messageId: widget.message.id,
+                                        userId: widget.currentUserId,
+                                      );
+                                    } else {
+                                      await ChatController().addReaction(
+                                        chatId: widget.chatId,
+                                        messageId: widget.message.id,
+                                        userId: widget.currentUserId,
+                                        emoji: emoji,
+                                      );
+                                    }
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isSelected
+                                              ? Colors.deepPurple[100]
+                                              : Colors.transparent,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      emoji,
+                                      style: const TextStyle(fontSize: 20),
+                                    ),
+                                  ),
+                                );
+                              }),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() => _showEmojiBar = false);
+                                  _showOptionsSheet(context);
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.only(left: 4),
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.more_horiz, size: 20),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -369,7 +512,6 @@ class _ChatBubbleState extends State<ChatBubble> {
                 ),
               ),
             ),
-            if (widget.isMe) UserAvatar(url: photoUrl),
           ],
         ),
       ),
@@ -377,7 +519,6 @@ class _ChatBubbleState extends State<ChatBubble> {
   }
 
   List<Widget> _buildReactionChips() {
-    // Group reactions by emoji
     final Map<String, List<String>> grouped = {};
     widget.message.reactions.forEach((userId, emoji) {
       grouped.putIfAbsent(emoji, () => []).add(userId);

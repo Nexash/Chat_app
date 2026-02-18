@@ -17,7 +17,7 @@ class AuthController {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Login Successful! ."),
+              content: Text("Spill some tea.."),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 2),
             ),

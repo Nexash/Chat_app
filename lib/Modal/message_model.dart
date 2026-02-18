@@ -13,6 +13,7 @@ class MessageModel {
   final bool read;
   final String type;
   final Map<String, String> reactions;
+  final bool isEdited;
 
   MessageModel({
     required this.id,
@@ -22,6 +23,7 @@ class MessageModel {
     this.read = false,
     this.type = 'text',
     this.reactions = const {},
+    this.isEdited = false,
   });
 
   factory MessageModel.fromJson(Map<String, dynamic> json) =>

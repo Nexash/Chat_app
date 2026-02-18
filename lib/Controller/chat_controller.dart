@@ -248,6 +248,22 @@ class ChatController {
     await batch.commit();
   }
 
+  // edit message
+  Future<void> editMessage({
+    required String chatId,
+    required String messageId,
+    required String newText,
+  }) async {
+    await _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .doc(messageId)
+        .update({'text': newText, 'isEdited': true});
+
+    log('[$chatId] Message $messageId edited.');
+  }
+
   // delete message
   Future<void> deleteMessage({
     required String chatId,
@@ -290,12 +306,22 @@ class ChatController {
     required String userId,
     required String emoji,
   }) async {
-    await _firestore
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .doc(messageId)
-        .update({'reactions.$userId': emoji});
+    final batch = _firestore.batch();
+
+    batch.update(
+      _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId),
+      {'reactions.$userId': emoji},
+    );
+    batch.update(_firestore.collection('chats').doc(chatId), {
+      'lastMessage': ' Reacted $emoji a message',
+      'lastMessageTime': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
   }
 
   Future<void> removeReaction({
