@@ -283,6 +283,34 @@ class ChatController {
     });
   }
 
+  // Reaction
+  Future<void> addReaction({
+    required String chatId,
+    required String messageId,
+    required String userId,
+    required String emoji,
+  }) async {
+    await _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .doc(messageId)
+        .update({'reactions.$userId': emoji});
+  }
+
+  Future<void> removeReaction({
+    required String chatId,
+    required String messageId,
+    required String userId,
+  }) async {
+    await _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .doc(messageId)
+        .update({'reactions.$userId': FieldValue.delete()});
+  }
+
   //Read Receipts
 
   Stream<DocumentSnapshot> getChatRoomData(String chatId) =>

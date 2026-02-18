@@ -12,6 +12,7 @@ class MessageModel {
   final DateTime timestamp;
   final bool read;
   final String type;
+  final Map<String, String> reactions;
 
   MessageModel({
     required this.id,
@@ -20,6 +21,7 @@ class MessageModel {
     required this.timestamp,
     this.read = false,
     this.type = 'text',
+    this.reactions = const {},
   });
 
   factory MessageModel.fromJson(Map<String, dynamic> json) =>

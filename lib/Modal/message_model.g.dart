@@ -13,6 +13,11 @@ MessageModel _$MessageModelFromJson(Map<String, dynamic> json) => MessageModel(
   timestamp: MessageModel.timestampFromJson(json['timestamp']),
   read: json['read'] as bool? ?? false,
   type: json['type'] as String? ?? 'text',
+  reactions:
+      (json['reactions'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, e as String),
+      ) ??
+      const {},
 );
 
 Map<String, dynamic> _$MessageModelToJson(MessageModel instance) =>
@@ -23,4 +28,5 @@ Map<String, dynamic> _$MessageModelToJson(MessageModel instance) =>
       'timestamp': MessageModel.timestampToJson(instance.timestamp),
       'read': instance.read,
       'type': instance.type,
+      'reactions': instance.reactions,
     };

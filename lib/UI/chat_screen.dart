@@ -278,6 +278,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                                 messages[index].senderId ==
                                                 currentUserId,
                                             chatId: chatId!,
+                                            currentUserId: currentUserId,
                                           );
                                         },
                                       ),
