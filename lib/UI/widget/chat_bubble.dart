@@ -16,6 +16,8 @@ class ChatBubble extends StatefulWidget {
   final bool isMe;
   final String chatId;
   final String currentUserId;
+  final ValueNotifier<String?> selectedBubbleId;
+  final ValueNotifier<String?> newMessageNotifier;
 
   const ChatBubble({
     super.key,
@@ -25,19 +27,83 @@ class ChatBubble extends StatefulWidget {
     required this.isMe,
     required this.chatId,
     required this.currentUserId,
+    required this.selectedBubbleId,
+
+    required this.newMessageNotifier,
   });
 
   @override
   State<ChatBubble> createState() => _ChatBubbleState();
 }
 
-class _ChatBubbleState extends State<ChatBubble> {
-  bool _showEmojiBar = false;
+class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
   ChatController chatController = ChatController();
   final TextEditingController _messageController = TextEditingController();
+  bool get _isEmojiBarVisible =>
+      widget.selectedBubbleId.value == widget.message.id;
+  AnimationController? _animController;
+  Animation<double>? _scaleAnim;
+  bool _shouldAnimate = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.newMessageNotifier.addListener(_onNewMessage);
+    if (widget.newMessageNotifier.value == widget.message.id) {
+      _shouldAnimate = true; // mark it before first frame
+      _triggerAnimation();
+    }
+  }
+
+  void _onNewMessage() {
+    if (widget.newMessageNotifier.value == widget.message.id) {
+      _shouldAnimate = true;
+      _triggerAnimation();
+      setState(() {});
+    }
+  }
+
+  void _triggerAnimation() {
+    _animController?.dispose();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+      value: 0,
+    );
+
+    _scaleAnim = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 0.7), // shrink down
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 0.7, end: 1.1), // expand past normal
+        weight: 40,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.1, end: 1.0), // settle to normal
+        weight: 30,
+      ),
+    ]).animate(
+      CurvedAnimation(parent: _animController!, curve: Curves.easeInOut),
+    );
+
+    _animController!.forward();
+  }
+
+  @override
+  void dispose() {
+    widget.newMessageNotifier.removeListener(_onNewMessage);
+    _animController?.dispose();
+    super.dispose();
+  }
 
   void _toggleEmojiBar() {
-    setState(() => _showEmojiBar = !_showEmojiBar);
+    if (_isEmojiBarVisible) {
+      widget.selectedBubbleId.value = null;
+    } else {
+      widget.selectedBubbleId.value = widget.message.id;
+    }
   }
 
   void _showEditBox(BuildContext context) {
@@ -224,6 +290,7 @@ class _ChatBubbleState extends State<ChatBubble> {
                             color: Colors.black87,
                             onTap: () async {
                               Navigator.pop(context);
+                              FocusManager.instance.primaryFocus?.unfocus();
                               try {
                                 await ChatController().deleteMessage(
                                   chatId: widget.chatId,
@@ -243,9 +310,7 @@ class _ChatBubbleState extends State<ChatBubble> {
           ),
     ).then((_) {
       if (mounted) {
-        setState(() {
-          _showEmojiBar = false;
-        });
+        widget.selectedBubbleId.value = null;
       }
     });
   }
@@ -282,8 +347,8 @@ class _ChatBubbleState extends State<ChatBubble> {
   Widget build(BuildContext context) {
     final String photoUrl =
         widget.isMe ? widget.currentUser.photoUrl : widget.user.photoUrl;
-
-    return Align(
+    final theme = Theme.of(context).appBarTheme.backgroundColor;
+    final bubbleContent = Align(
       alignment: widget.isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Padding(
         padding:
@@ -297,225 +362,248 @@ class _ChatBubbleState extends State<ChatBubble> {
           children: [
             if (!widget.isMe) UserAvatar(url: photoUrl),
             Flexible(
-              child: GestureDetector(
-                onLongPress: () {
-                  _toggleEmojiBar();
-                  // _showOptionsSheet(context);
-                },
-                child: Column(
-                  crossAxisAlignment:
-                      widget.isMe
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.start,
-                  children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.symmetric(
-                            vertical: 4,
-                            horizontal: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                widget.isMe
-                                    ? const Color.fromARGB(207, 126, 87, 194)
-                                    : Colors.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(12),
-                              topRight: const Radius.circular(12),
-                              bottomLeft: Radius.circular(widget.isMe ? 12 : 0),
-                              bottomRight: Radius.circular(
-                                widget.isMe ? 0 : 12,
-                              ),
-                            ),
-                            boxShadow: [
-                              if (!widget.isMe)
-                                const BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 2,
-                                ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment:
-                                widget.isMe
-                                    ? CrossAxisAlignment.end
-                                    : CrossAxisAlignment.start,
-                            children: [
-                              buildClickableText(
-                                widget.message.text,
-                                widget.isMe,
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (widget.message.isEdited)
-                                    const Icon(
-                                      Icons.edit,
-                                      size: 10,
-                                      color: Colors.white70,
-                                    ),
-                                  if (widget.message.isEdited)
-                                    const SizedBox(width: 5),
-                                  Text(
-                                    formatMessageTime(
-                                      widget.message.timestamp.toString(),
-                                    ),
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color:
-                                          widget.isMe
-                                              ? Colors.white70
-                                              : Colors.black54,
-                                    ),
-                                  ),
-                                  if (widget.isMe) ...[
-                                    const SizedBox(width: 4),
-                                    Icon(
-                                      Icons.done_all,
-                                      size: 15,
-                                      color:
-                                          widget.message.read
-                                              ? Colors.blue
-                                              : Colors.white70,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
+              child: ValueListenableBuilder<String?>(
+                valueListenable: widget.selectedBubbleId,
+                builder: (context, selectedId, _) {
+                  final isEmojiBarVisible = selectedId == widget.message.id;
+                  return GestureDetector(
+                    onLongPress: _toggleEmojiBar,
 
-                        // Reaction chips (positioned below message)
-                        if (widget.message.reactions.isNotEmpty)
-                          Positioned(
-                            bottom: -10,
-                            right: widget.isMe ? 5 : null,
-                            left: widget.isMe ? null : 5,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
+                    child: Column(
+                      crossAxisAlignment:
+                          widget.isMe
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
+                      children: [
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              margin: const EdgeInsets.symmetric(
+                                vertical: 4,
+                                horizontal: 8,
                               ),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
+                                color:
+                                    widget.isMe
+                                        ? theme?.withValues(alpha: 0.7)
+                                        : Colors.white,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: const Radius.circular(12),
+                                  topRight: const Radius.circular(12),
+                                  bottomLeft: Radius.circular(
+                                    widget.isMe ? 12 : 0,
+                                  ),
+                                  bottomRight: Radius.circular(
+                                    widget.isMe ? 0 : 12,
+                                  ),
+                                ),
                                 boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
+                                  if (!widget.isMe)
+                                    const BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 2,
+                                    ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment:
+                                    widget.isMe
+                                        ? CrossAxisAlignment.end
+                                        : CrossAxisAlignment.start,
+                                children: [
+                                  buildClickableText(
+                                    widget.message.text,
+                                    widget.isMe,
+                                  ),
+
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (widget.message.isEdited)
+                                        const Icon(
+                                          Icons.edit,
+                                          size: 15,
+                                          color: Colors.white70,
+                                        ),
+                                      if (widget.message.isEdited)
+                                        SizedBox(width: 10),
+                                      if (widget.message.isEdited)
+                                        const SizedBox(width: 5),
+                                      Text(
+                                        formatMessageTime(
+                                          widget.message.timestamp.toString(),
+                                        ),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color:
+                                              widget.isMe
+                                                  ? Colors.white70
+                                                  : Colors.black54,
+                                        ),
+                                      ),
+                                      if (widget.isMe) ...[
+                                        const SizedBox(width: 4),
+                                        widget.message.read
+                                            ? Icon(
+                                              Icons.done_all,
+                                              size: 15,
+                                              color: Colors.white70,
+                                            )
+                                            : Icon(
+                                              Icons.done,
+                                              size: 15,
+                                              color: Colors.white70,
+                                            ),
+                                      ],
+                                    ],
                                   ),
                                 ],
                               ),
-                              child: Wrap(
-                                spacing: 4,
-                                children: _buildReactionChips(),
+                            ),
+
+                            if (widget.message.reactions.isNotEmpty)
+                              Positioned(
+                                bottom: -10,
+                                right: widget.isMe ? 5 : null,
+                                left: widget.isMe ? null : 5,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Wrap(
+                                    spacing: 4,
+                                    children: _buildReactionChips(),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+
+                        if (isEmojiBarVisible)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              left: 8,
+                              right: 8,
+                              top: 4,
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.15),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ...['👍', '❤️', '😂', '😮', '😢', '👀'].map((
+                                    emoji,
+                                  ) {
+                                    final isSelected =
+                                        widget.message.reactions[widget
+                                            .currentUserId] ==
+                                        emoji;
+                                    return GestureDetector(
+                                      onTap: () async {
+                                        widget.selectedBubbleId.value = null;
+
+                                        if (isSelected) {
+                                          await ChatController().removeReaction(
+                                            chatId: widget.chatId,
+                                            messageId: widget.message.id,
+                                            userId: widget.currentUserId,
+                                          );
+                                        } else {
+                                          await ChatController().addReaction(
+                                            chatId: widget.chatId,
+                                            messageId: widget.message.id,
+                                            userId: widget.currentUserId,
+                                            emoji: emoji,
+                                          );
+                                        }
+                                      },
+                                      child: Container(
+                                        margin: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                        ),
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              isSelected
+                                                  ? Colors.deepPurple[100]
+                                                  : Colors.transparent,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Text(
+                                          emoji,
+                                          style: const TextStyle(fontSize: 20),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                  GestureDetector(
+                                    onTap: () {
+                                      widget.selectedBubbleId.value = null;
+
+                                      _showOptionsSheet(context);
+                                    },
+                                    child: Container(
+                                      margin: const EdgeInsets.only(left: 4),
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[200],
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.more_horiz,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                       ],
                     ),
-
-                    // Inline emoji selector (scrolls with message)
-                    if (_showEmojiBar)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          left: 8,
-                          right: 8,
-                          top: 4,
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ...['👍', '❤️', '😂', '😮', '😢', '👀'].map((
-                                emoji,
-                              ) {
-                                final isSelected =
-                                    widget.message.reactions[widget
-                                        .currentUserId] ==
-                                    emoji;
-                                return GestureDetector(
-                                  onTap: () async {
-                                    setState(() => _showEmojiBar = false);
-                                    if (isSelected) {
-                                      await ChatController().removeReaction(
-                                        chatId: widget.chatId,
-                                        messageId: widget.message.id,
-                                        userId: widget.currentUserId,
-                                      );
-                                    } else {
-                                      await ChatController().addReaction(
-                                        chatId: widget.chatId,
-                                        messageId: widget.message.id,
-                                        userId: widget.currentUserId,
-                                        emoji: emoji,
-                                      );
-                                    }
-                                  },
-                                  child: Container(
-                                    margin: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                    ),
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          isSelected
-                                              ? Colors.deepPurple[100]
-                                              : Colors.transparent,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Text(
-                                      emoji,
-                                      style: const TextStyle(fontSize: 20),
-                                    ),
-                                  ),
-                                );
-                              }),
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() => _showEmojiBar = false);
-                                  _showOptionsSheet(context);
-                                },
-                                child: Container(
-                                  margin: const EdgeInsets.only(left: 4),
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[200],
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.more_horiz, size: 20),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
     );
+    if (_shouldAnimate && _scaleAnim != null) {
+      return ScaleTransition(
+        scale: _scaleAnim!,
+        alignment: widget.isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: bubbleContent,
+      );
+    }
+    return bubbleContent;
   }
 
   List<Widget> _buildReactionChips() {

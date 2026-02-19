@@ -1,4 +1,5 @@
 import 'package:chat_app/Provider/theme_provider.dart';
+import 'package:chat_app/UI/HomeScreen.dart';
 import 'package:chat_app/UI/login_screen.dart';
 import 'package:chat_app/firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -45,13 +46,13 @@ class MyApp extends StatelessWidget {
           // DARK THEME
           darkTheme: ThemeData(
             cardColor: const Color.fromARGB(255, 254, 217, 202),
-            scaffoldBackgroundColor: const Color.fromARGB(255, 254, 217, 202),
+            scaffoldBackgroundColor: const Color(0xFFB6CEB4),
             appBarTheme: AppBarTheme(
-              backgroundColor: const Color.fromARGB(255, 47, 22, 12),
+              backgroundColor: Color(0xFF254F22),
               foregroundColor: const Color.fromARGB(255, 255, 255, 255),
             ),
             bottomSheetTheme: BottomSheetThemeData(
-              backgroundColor: const Color.fromARGB(244, 250, 209, 192),
+              backgroundColor: const Color.fromARGB(255, 159, 205, 154),
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             ),
@@ -63,6 +64,9 @@ class MyApp extends StatelessWidget {
                 return const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 );
+              }
+              if (snapshot.hasData) {
+                return const HomeScreen();
               }
 
               return const LoginScreen();

@@ -33,12 +33,15 @@ class _ChatScreenState extends State<ChatScreen> {
   late ImageProvider userImage;
   late ImageProvider currentUserImage;
   final ScrollController _scrollController = ScrollController();
-
   String? chatId;
+
   final String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
   final TextEditingController _messageController = TextEditingController();
   late Stream<List<MessageModel>> _messageStream;
-
+  final ValueNotifier<String?> selectedBubbleId = ValueNotifier<String?>(null);
+  final ValueNotifier<String?> _newMessageNotifier = ValueNotifier<String?>(
+    null,
+  );
   bool _isLoadingMore = false;
   bool _userHasScrolled = false;
   Timer? _typingTimer;
@@ -104,6 +107,8 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _messageController.dispose();
+    selectedBubbleId.dispose();
+    _newMessageNotifier.dispose();
     super.dispose();
   }
 
@@ -123,12 +128,21 @@ class _ChatScreenState extends State<ChatScreen> {
       String messageText = _messageController.text.trim();
       _messageController.clear();
       try {
-        await _chatController.sendMessage(
+        final newMessageId = await _chatController.sendMessage(
           chatId: chatId!,
           senderId: currentUserId,
           text: messageText,
         );
+
+        if (!mounted) return;
+        _newMessageNotifier.value = newMessageId;
+
+        _scrollController.jumpTo(0);
+
         log("✅ Message Sent: $chatId → $messageText");
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (mounted) _newMessageNotifier.value = null;
+        });
       } catch (e) {
         log(e.toString());
       }
@@ -141,18 +155,20 @@ class _ChatScreenState extends State<ChatScreen> {
     final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
     return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
+      onTap: () {
+        FocusScope.of(context).unfocus();
+        selectedBubbleId.value = null;
+      },
       child: Scaffold(
         resizeToAvoidBottomInset: false,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          // backgroundColor: Colors.deepPurple[400],
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () async {
               if (isKeyboardVisible) {
                 FocusManager.instance.primaryFocus?.unfocus();
-                await Future.delayed(const Duration(milliseconds: 500));
+                await Future.delayed(const Duration(milliseconds: 200));
                 if (context.mounted) Navigator.pop(context);
               } else {
                 if (context.mounted) Navigator.pop(context);
@@ -196,12 +212,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       const Center(child: CircularProgressIndicator())
                     else
                       Expanded(
-                        child: AnimatedPadding(
-                          duration: const Duration(milliseconds: 400),
-                          curve: Curves.fastEaseInToSlowEaseOut,
-                          padding: EdgeInsets.only(
-                            bottom: keyboardHeight > 0 ? keyboardHeight : 0,
-                          ),
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: keyboardHeight),
                           child: StreamBuilder<List<MessageModel>>(
                             stream: _messageStream,
                             initialData: _chatController.getCachedMessages(
@@ -239,20 +251,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
                               return Column(
                                 children: [
-                                  if (!_chatController.hasMore(chatId!) &&
-                                      messages.isNotEmpty)
-                                    const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        vertical: 8,
-                                      ),
-                                      // child: Text(
-                                      //   "Start of conversation",
-                                      //   style: TextStyle(
-                                      //     color: Colors.white70,
-                                      //     fontSize: 12,
-                                      //   ),
-                                      // ),
-                                    ),
                                   if (_isLoadingMore)
                                     const Padding(
                                       padding: EdgeInsets.all(6),
@@ -282,6 +280,10 @@ class _ChatScreenState extends State<ChatScreen> {
                                                   currentUserId,
                                               chatId: chatId!,
                                               currentUserId: currentUserId,
+                                              selectedBubbleId:
+                                                  selectedBubbleId,
+                                              newMessageNotifier:
+                                                  _newMessageNotifier,
                                             );
                                           },
                                         ),
@@ -343,10 +345,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
 
-              AnimatedPositioned(
+              Positioned(
                 height: 70,
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.fastEaseInToSlowEaseOut,
                 left: 0,
                 right: 0,
                 bottom: keyboardHeight,

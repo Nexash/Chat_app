@@ -155,7 +155,7 @@ class ChatController {
   void scheduleDispose(String chatId) {
     _disposeTimers[chatId]?.cancel();
 
-    _disposeTimers[chatId] = Timer(const Duration(minutes: 1), () {
+    _disposeTimers[chatId] = Timer(const Duration(hours: 24), () {
       log('[$chatId] 5-min timer fired — disposing chat.');
       disposeChat(chatId);
     });
@@ -210,42 +210,54 @@ class ChatController {
 
   //  Send Message
 
-  Future<void> sendMessage({
+  Future<String?> sendMessage({
     required String chatId,
     required String senderId,
     required String text,
   }) async {
-    final chatDoc = await _firestore.collection('chats').doc(chatId).get();
-    final List activeUsers = chatDoc.data()?['activeParticipants'] ?? [];
+    try {
+      final chatDoc = await _firestore.collection('chats').doc(chatId).get();
+      final List activeUsers = chatDoc.data()?['activeParticipants'] ?? [];
 
-    final List participants = chatId.split('_');
-    final String recipientId =
-        participants.first == senderId ? participants.last : participants.first;
-    final bool isReadByRecipient = activeUsers.contains(recipientId);
+      final List participants = chatId.split('_');
+      final String recipientId =
+          participants.first == senderId
+              ? participants.last
+              : participants.first;
+      final bool isReadByRecipient = activeUsers.contains(recipientId);
 
-    final messageRef =
-        _firestore.collection('chats').doc(chatId).collection('messages').doc();
+      final messageRef =
+          _firestore
+              .collection('chats')
+              .doc(chatId)
+              .collection('messages')
+              .doc();
 
-    final newMessage = MessageModel(
-      id: messageRef.id,
-      senderId: senderId,
-      text: text,
-      timestamp: DateTime.now(),
-      read: isReadByRecipient,
-      type: 'text',
-    );
+      final newMessage = MessageModel(
+        id: messageRef.id,
+        senderId: senderId,
+        text: text,
+        timestamp: DateTime.now(),
+        read: isReadByRecipient,
+        type: 'text',
+      );
 
-    final batch = _firestore.batch();
-    batch.set(messageRef, newMessage.toJson());
-    batch.set(_firestore.collection('chats').doc(chatId), {
-      'lastMessage': text,
-      'lastMessageTime': Timestamp.fromDate(newMessage.timestamp),
-      'lastMessageRead': isReadByRecipient,
-      'lastMassageSender': senderId,
-      'participants': participants,
-    }, SetOptions(merge: true));
+      final batch = _firestore.batch();
+      batch.set(messageRef, newMessage.toJson());
+      batch.set(_firestore.collection('chats').doc(chatId), {
+        'lastMessage': text,
+        'lastMessageTime': Timestamp.fromDate(newMessage.timestamp),
+        'lastMessageRead': isReadByRecipient,
+        'lastMassageSender': senderId,
+        'participants': participants,
+      }, SetOptions(merge: true));
 
-    await batch.commit();
+      await batch.commit();
+      return newMessage.id;
+    } catch (e) {
+      log("Cant send message: $e");
+      return null;
+    }
   }
 
   // edit message
@@ -306,6 +318,13 @@ class ChatController {
     required String userId,
     required String emoji,
   }) async {
+    final chatDoc = await _firestore.collection('chats').doc(chatId).get();
+    final List activeUsers = chatDoc.data()?['activeParticipants'] ?? [];
+
+    final List participants = chatId.split('_');
+    final String recipientId =
+        participants.first == userId ? participants.last : participants.first;
+    final bool isReadByRecipient = activeUsers.contains(recipientId);
     final batch = _firestore.batch();
 
     batch.update(
@@ -316,9 +335,13 @@ class ChatController {
           .doc(messageId),
       {'reactions.$userId': emoji},
     );
+
     batch.update(_firestore.collection('chats').doc(chatId), {
       'lastMessage': ' Reacted $emoji a message',
+      'lastMassageSender': userId,
       'lastMessageTime': FieldValue.serverTimestamp(),
+      'lastMessageRead': isReadByRecipient,
+      'participants': participants,
     });
 
     await batch.commit();
