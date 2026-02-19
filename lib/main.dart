@@ -1,15 +1,18 @@
+import 'package:chat_app/FCM/fcm_handler.dart';
 import 'package:chat_app/Provider/theme_provider.dart';
 import 'package:chat_app/UI/HomeScreen.dart';
 import 'package:chat_app/UI/login_screen.dart';
 import 'package:chat_app/firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
@@ -68,7 +71,6 @@ class MyApp extends StatelessWidget {
               if (snapshot.hasData) {
                 return const HomeScreen();
               }
-
               return const LoginScreen();
             },
           ),

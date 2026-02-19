@@ -152,7 +152,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+
     final theme = Theme.of(context).appBarTheme.backgroundColor;
     return GestureDetector(
       onTap: () {
@@ -260,69 +260,69 @@ class _ChatScreenState extends State<ChatScreen> {
                                   ),
 
                                 Expanded(
-                                  child: Stack(
-                                    children: [
-                                      ListView.builder(
-                                        controller: _scrollController,
-                                        padding: EdgeInsets.only(
-                                          bottom: _otherIsTyping ? 50 : 0,
-                                        ),
-                                        reverse: true,
-                                        itemCount: messages.length,
-                                        itemBuilder: (context, index) {
-                                          return ChatBubble(
-                                            message: messages[index],
-                                            user: widget.user,
-                                            currentUser: widget.currentUser,
-                                            isMe:
-                                                messages[index].senderId ==
-                                                currentUserId,
-                                            chatId: chatId!,
-                                            currentUserId: currentUserId,
-                                            selectedBubbleId: selectedBubbleId,
-                                            newMessageNotifier:
-                                                _newMessageNotifier,
-                                          );
-                                        },
-                                      ),
-                                      StreamBuilder<DocumentSnapshot>(
-                                        stream: _chatController.getChatRoomData(
-                                          chatId!,
-                                        ),
-                                        builder: (context, snap) {
-                                          if (!snap.hasData) {
-                                            return const SizedBox.shrink();
-                                          }
-                                          final data =
-                                              snap.data!.data()
-                                                  as Map<String, dynamic>?;
-                                          final typingUsers = List<String>.from(
-                                            data?['typingUsers'] ?? [],
-                                          );
-                                          final isTyping = typingUsers.any(
-                                            (id) => id != currentUserId,
-                                          );
+                                  child: ListView.builder(
+                                    controller: _scrollController,
+                                    padding: EdgeInsets.only(
+                                      bottom: _otherIsTyping ? 0 : 0,
+                                    ),
+                                    reverse: true,
+                                    itemCount: messages.length,
+                                    itemBuilder: (context, index) {
+                                      return ChatBubble(
+                                        message: messages[index],
+                                        user: widget.user,
+                                        currentUser: widget.currentUser,
+                                        isMe:
+                                            messages[index].senderId ==
+                                            currentUserId,
+                                        chatId: chatId!,
+                                        currentUserId: currentUserId,
+                                        selectedBubbleId: selectedBubbleId,
+                                        newMessageNotifier: _newMessageNotifier,
+                                      );
+                                    },
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 8.0,
+                                    left: 10,
+                                  ),
+                                  child: StreamBuilder<DocumentSnapshot>(
+                                    stream: _chatController.getChatRoomData(
+                                      chatId!,
+                                    ),
+                                    builder: (context, snap) {
+                                      if (!snap.hasData) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      final data =
+                                          snap.data!.data()
+                                              as Map<String, dynamic>?;
+                                      final typingUsers = List<String>.from(
+                                        data?['typingUsers'] ?? [],
+                                      );
+                                      final isTyping = typingUsers.any(
+                                        (id) => id != currentUserId,
+                                      );
 
-                                          // Update state so ListView padding reacts
-                                          if (isTyping != _otherIsTyping) {
-                                            WidgetsBinding.instance
-                                                .addPostFrameCallback((_) {
-                                                  if (mounted) {
-                                                    setState(
-                                                      () =>
-                                                          _otherIsTyping =
-                                                              isTyping,
-                                                    );
-                                                  }
-                                                });
-                                          }
+                                      // Update state so ListView padding reacts
+                                      if (isTyping != _otherIsTyping) {
+                                        WidgetsBinding.instance
+                                            .addPostFrameCallback((_) {
+                                              if (mounted) {
+                                                setState(
+                                                  () =>
+                                                      _otherIsTyping = isTyping,
+                                                );
+                                              }
+                                            });
+                                      }
 
-                                          return isTyping
-                                              ? const TypingIndicator()
-                                              : const SizedBox.shrink();
-                                        },
-                                      ),
-                                    ],
+                                      return isTyping
+                                          ? const TypingIndicator()
+                                          : const SizedBox.shrink();
+                                    },
                                   ),
                                 ),
                               ],

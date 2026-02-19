@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:chat_app/Modal/message_model.dart';
+import 'package:chat_app/Service/fcm_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChatController {
@@ -253,6 +254,27 @@ class ChatController {
       }, SetOptions(merge: true));
 
       await batch.commit();
+      // ✅ Only notify if recipient is NOT active in chat
+      if (!isReadByRecipient) {
+        final recipientDoc =
+            await _firestore.collection('users').doc(recipientId).get();
+        final recipientToken = recipientDoc.data()?['fcmToken'];
+        final senderDoc =
+            await _firestore.collection('users').doc(senderId).get();
+        final senderName = senderDoc.data()?['name'] ?? 'Someone';
+
+        if (recipientToken != null) {
+          await FCMService.sendNotification(
+            receiverToken: recipientToken,
+            title: senderName,
+            body: text,
+            senderId: senderId,
+          );
+        }
+        log('🔔 activeUsers: $activeUsers');
+        log('🔔 recipientId: $recipientId');
+        log('🔔 isReadByRecipient: $isReadByRecipient');
+      }
       return newMessage.id;
     } catch (e) {
       log("Cant send message: $e");

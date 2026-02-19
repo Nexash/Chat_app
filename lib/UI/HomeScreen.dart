@@ -3,6 +3,7 @@ import 'package:chat_app/Controller/chat_controller.dart';
 import 'package:chat_app/Controller/user_controller.dart';
 import 'package:chat_app/Modal/user_modal.dart';
 import 'package:chat_app/Provider/theme_provider.dart';
+import 'package:chat_app/Service/fcm_service.dart';
 import 'package:chat_app/UI/widget/user_tile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -19,12 +20,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   AuthController authController = AuthController();
   UserController userController = UserController();
   ChatController chatController = ChatController();
-
+  late Stream<List<UserModal>> _usersStream;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _updateStatus(true);
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    _usersStream = userController.getUsersExcluding(uid);
+    FCMService.init(context);
   }
 
   @override
@@ -51,7 +55,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -104,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 width: MediaQuery.of(context).size.width,
 
                 child: StreamBuilder<List<UserModal>>(
-                  stream: userController.getUsersExcluding(uid),
+                  stream: _usersStream,
                   builder: (context, snapshot) {
                     if (snapshot.hasData) {
                       final users = snapshot.data ?? [];
