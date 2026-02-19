@@ -153,14 +153,14 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
     final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-
+    final theme = Theme.of(context).appBarTheme.backgroundColor;
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();
         selectedBubbleId.value = null;
       },
       child: Scaffold(
-        resizeToAvoidBottomInset: false,
+        resizeToAvoidBottomInset: true,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           leading: IconButton(
@@ -205,156 +205,137 @@ class _ChatScreenState extends State<ChatScreen> {
         body: SafeArea(
           child: Stack(
             children: [
-              Positioned.fill(
-                child: Column(
-                  children: [
-                    if (chatId == null)
-                      const Center(child: CircularProgressIndicator())
-                    else
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.only(bottom: keyboardHeight),
-                          child: StreamBuilder<List<MessageModel>>(
-                            stream: _messageStream,
-                            initialData: _chatController.getCachedMessages(
-                              chatId!,
-                            ),
-                            builder: (context, snapshot) {
-                              if (snapshot.hasError) {
-                                return Text("Error: ${snapshot.error}");
+              Column(
+                children: [
+                  if (chatId == null)
+                    const Center(child: CircularProgressIndicator())
+                  else
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 10),
+                        child: StreamBuilder<List<MessageModel>>(
+                          stream: _messageStream,
+                          initialData: _chatController.getCachedMessages(
+                            chatId!,
+                          ),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasError) {
+                              return Text("Error: ${snapshot.error}");
+                            }
+
+                            if (snapshot.connectionState ==
+                                    ConnectionState.waiting &&
+                                !snapshot.hasData) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+
+                            final messages = snapshot.data ?? [];
+
+                            if (messages.isNotEmpty) {
+                              final latestMessage = messages.first;
+                              if (latestMessage.senderId != currentUserId &&
+                                  !latestMessage.read) {
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  _chatController.markMessagesAsRead(
+                                    chatId!,
+                                    currentUserId,
+                                  );
+                                });
                               }
+                            }
 
-                              if (snapshot.connectionState ==
-                                      ConnectionState.waiting &&
-                                  !snapshot.hasData) {
-                                return const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              }
-
-                              final messages = snapshot.data ?? [];
-
-                              if (messages.isNotEmpty) {
-                                final latestMessage = messages.first;
-                                if (latestMessage.senderId != currentUserId &&
-                                    !latestMessage.read) {
-                                  WidgetsBinding.instance.addPostFrameCallback((
-                                    _,
-                                  ) {
-                                    _chatController.markMessagesAsRead(
-                                      chatId!,
-                                      currentUserId,
-                                    );
-                                  });
-                                }
-                              }
-
-                              return Column(
-                                children: [
-                                  if (_isLoadingMore)
-                                    const Padding(
-                                      padding: EdgeInsets.all(6),
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-
-                                  Expanded(
-                                    child: Stack(
-                                      children: [
-                                        ListView.builder(
-                                          controller: _scrollController,
-                                          padding: EdgeInsets.only(
-                                            bottom: _otherIsTyping ? 50 : 0,
-                                          ),
-                                          reverse: true,
-                                          itemCount: messages.length,
-                                          itemBuilder: (context, index) {
-                                            return ChatBubble(
-                                              message: messages[index],
-                                              user: widget.user,
-                                              currentUser: widget.currentUser,
-                                              isMe:
-                                                  messages[index].senderId ==
-                                                  currentUserId,
-                                              chatId: chatId!,
-                                              currentUserId: currentUserId,
-                                              selectedBubbleId:
-                                                  selectedBubbleId,
-                                              newMessageNotifier:
-                                                  _newMessageNotifier,
-                                            );
-                                          },
-                                        ),
-                                        Positioned(
-                                          bottom: 0,
-                                          left: 0,
-                                          right: 0,
-                                          child: StreamBuilder<
-                                            DocumentSnapshot
-                                          >(
-                                            stream: _chatController
-                                                .getChatRoomData(chatId!),
-                                            builder: (context, snap) {
-                                              if (!snap.hasData) {
-                                                return const SizedBox.shrink();
-                                              }
-                                              final data =
-                                                  snap.data!.data()
-                                                      as Map<String, dynamic>?;
-                                              final typingUsers =
-                                                  List<String>.from(
-                                                    data?['typingUsers'] ?? [],
-                                                  );
-                                              final isTyping = typingUsers.any(
-                                                (id) => id != currentUserId,
-                                              );
-
-                                              // Update state so ListView padding reacts
-                                              if (isTyping != _otherIsTyping) {
-                                                WidgetsBinding.instance
-                                                    .addPostFrameCallback((_) {
-                                                      if (mounted) {
-                                                        setState(
-                                                          () =>
-                                                              _otherIsTyping =
-                                                                  isTyping,
-                                                        );
-                                                      }
-                                                    });
-                                              }
-
-                                              return isTyping
-                                                  ? const TypingIndicator()
-                                                  : const SizedBox.shrink();
-                                            },
-                                          ),
-                                        ),
-                                      ],
+                            return Column(
+                              children: [
+                                if (_isLoadingMore)
+                                  const Padding(
+                                    padding: EdgeInsets.all(6),
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
                                     ),
                                   ),
-                                ],
-                              );
-                            },
-                          ),
+
+                                Expanded(
+                                  child: Stack(
+                                    children: [
+                                      ListView.builder(
+                                        controller: _scrollController,
+                                        padding: EdgeInsets.only(
+                                          bottom: _otherIsTyping ? 50 : 0,
+                                        ),
+                                        reverse: true,
+                                        itemCount: messages.length,
+                                        itemBuilder: (context, index) {
+                                          return ChatBubble(
+                                            message: messages[index],
+                                            user: widget.user,
+                                            currentUser: widget.currentUser,
+                                            isMe:
+                                                messages[index].senderId ==
+                                                currentUserId,
+                                            chatId: chatId!,
+                                            currentUserId: currentUserId,
+                                            selectedBubbleId: selectedBubbleId,
+                                            newMessageNotifier:
+                                                _newMessageNotifier,
+                                          );
+                                        },
+                                      ),
+                                      StreamBuilder<DocumentSnapshot>(
+                                        stream: _chatController.getChatRoomData(
+                                          chatId!,
+                                        ),
+                                        builder: (context, snap) {
+                                          if (!snap.hasData) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          final data =
+                                              snap.data!.data()
+                                                  as Map<String, dynamic>?;
+                                          final typingUsers = List<String>.from(
+                                            data?['typingUsers'] ?? [],
+                                          );
+                                          final isTyping = typingUsers.any(
+                                            (id) => id != currentUserId,
+                                          );
+
+                                          // Update state so ListView padding reacts
+                                          if (isTyping != _otherIsTyping) {
+                                            WidgetsBinding.instance
+                                                .addPostFrameCallback((_) {
+                                                  if (mounted) {
+                                                    setState(
+                                                      () =>
+                                                          _otherIsTyping =
+                                                              isTyping,
+                                                    );
+                                                  }
+                                                });
+                                          }
+
+                                          return isTyping
+                                              ? const TypingIndicator()
+                                              : const SizedBox.shrink();
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ),
-                    const SizedBox(height: 70),
-                  ],
-                ),
-              ),
-
-              Positioned(
-                height: 70,
-                left: 0,
-                right: 0,
-                bottom: keyboardHeight,
-                child: ClipRRect(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 0,
+                    ),
+                  Container(
+                    padding: const EdgeInsets.only(
+                      left: 10,
+                      right: 10,
+                      bottom: 12,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.transparent,
@@ -396,7 +377,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                         const SizedBox(width: 8),
                         CircleAvatar(
-                          backgroundColor: Colors.deepPurple[400],
+                          backgroundColor: theme,
                           child: IconButton(
                             onPressed: sendMessage,
                             icon: const Icon(
@@ -409,7 +390,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ],
                     ),
                   ),
-                ),
+                ],
               ),
             ],
           ),

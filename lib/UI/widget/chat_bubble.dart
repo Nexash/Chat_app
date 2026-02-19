@@ -106,7 +106,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
     }
   }
 
-  void _showEditBox(BuildContext context) {
+  void _showEditBox(BuildContext context, Color theme) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -173,7 +173,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                             ),
                             const SizedBox(width: 8),
                             CircleAvatar(
-                              backgroundColor: Colors.deepPurple[400],
+                              backgroundColor: theme,
                               child: IconButton(
                                 onPressed: () async {
                                   try {
@@ -219,7 +219,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
     );
   }
 
-  void _showOptionsSheet(BuildContext context) {
+  void _showOptionsSheet(BuildContext context, Color theme) {
     showModalBottomSheet(
       context: context,
       barrierColor: Colors.transparent,
@@ -253,7 +253,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                 ),
                               );
                               Navigator.pop(context);
-                              _showEditBox(context);
+                              _showEditBox(context, theme);
                             },
                           ),
                         _buildOptionBtn(
@@ -567,7 +567,10 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                     onTap: () {
                                       widget.selectedBubbleId.value = null;
 
-                                      _showOptionsSheet(context);
+                                      _showOptionsSheet(
+                                        context,
+                                        theme ?? Colors.white,
+                                      );
                                     },
                                     child: Container(
                                       margin: const EdgeInsets.only(left: 4),
