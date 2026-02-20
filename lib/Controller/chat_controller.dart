@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:chat_app/Modal/message_model.dart';
+import 'package:chat_app/Service/claudinart_service.dart';
 import 'package:chat_app/Service/fcm_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -207,6 +209,84 @@ class ChatController {
               ? FieldValue.arrayUnion([userId])
               : FieldValue.arrayRemove([userId]),
     });
+  }
+
+  // add image
+  Future<String?> sendImageMessage({
+    required String chatId,
+    required String senderId,
+    required File imageFile,
+  }) async {
+    try {
+      final chatDoc = await _firestore.collection('chats').doc(chatId).get();
+      final List activeUsers = chatDoc.data()?['activeParticipants'] ?? [];
+
+      final List participants = chatId.split('_');
+      final String recipientId =
+          participants.first == senderId
+              ? participants.last
+              : participants.first;
+      final bool isReadByRecipient = activeUsers.contains(recipientId);
+
+      // Upload to Cloudinary
+      final String imageUrl = await CloudinaryService.uploadImage(
+        imageFile: imageFile,
+        chatId: chatId,
+      );
+
+      // Save message to Firestore
+      final messageRef =
+          _firestore
+              .collection('chats')
+              .doc(chatId)
+              .collection('messages')
+              .doc();
+
+      final newMessage = MessageModel(
+        id: messageRef.id,
+        senderId: senderId,
+        text: '',
+        timestamp: DateTime.now(),
+        read: isReadByRecipient,
+        type: 'image',
+        imageUrl: imageUrl,
+      );
+
+      final batch = _firestore.batch();
+      batch.set(messageRef, newMessage.toJson());
+      batch.set(_firestore.collection('chats').doc(chatId), {
+        'lastMessage': '📷 Photo',
+        'lastMessageTime': Timestamp.fromDate(newMessage.timestamp),
+        'lastMessageRead': isReadByRecipient,
+        'lastMassageSender': senderId,
+        'participants': participants,
+      }, SetOptions(merge: true));
+      await batch.commit();
+
+      // Send FCM notification if recipient not active
+      if (!isReadByRecipient) {
+        final recipientDoc =
+            await _firestore.collection('users').doc(recipientId).get();
+        final recipientToken = recipientDoc.data()?['fcmToken'];
+        final senderDoc =
+            await _firestore.collection('users').doc(senderId).get();
+        final senderName = senderDoc.data()?['name'] ?? 'Someone';
+
+        if (recipientToken != null) {
+          await FCMService.sendNotification(
+            receiverToken: recipientToken,
+            title: senderName,
+            body: '📷 Photo',
+            senderId: senderId,
+          );
+        }
+      }
+
+      return newMessage.id;
+    } catch (e) {
+      log("Can't send image: $e");
+      return null;
+    }
   }
 
   //  Send Message

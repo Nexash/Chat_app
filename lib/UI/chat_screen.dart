@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:chat_app/Controller/chat_controller.dart';
 import 'package:chat_app/Modal/message_model.dart';
@@ -10,6 +11,7 @@ import 'package:chat_app/UI/widget/user_avatar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ChatScreen extends StatefulWidget {
   final UserModal user;
@@ -146,6 +148,35 @@ class _ChatScreenState extends State<ChatScreen> {
       } catch (e) {
         log(e.toString());
       }
+    }
+  }
+
+  Future<void> _sendImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+    );
+
+    if (picked == null) return;
+
+    try {
+      final newMessageId = await _chatController.sendImageMessage(
+        chatId: chatId!,
+        senderId: currentUserId,
+        imageFile: File(picked.path),
+      );
+
+      if (!mounted) return;
+      if (newMessageId != null) {
+        _newMessageNotifier.value = newMessageId;
+        _scrollController.jumpTo(0);
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (mounted) _newMessageNotifier.value = null;
+        });
+      }
+    } catch (e) {
+      log("Image send error: $e");
     }
   }
 
@@ -345,6 +376,18 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     child: Row(
                       children: [
+                        CircleAvatar(
+                          backgroundColor: theme,
+                          child: IconButton(
+                            onPressed: _sendImage,
+                            icon: const Icon(
+                              Icons.image,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 10),
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(

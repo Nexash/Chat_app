@@ -413,10 +413,67 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                         ? CrossAxisAlignment.end
                                         : CrossAxisAlignment.start,
                                 children: [
-                                  buildClickableText(
-                                    widget.message.text,
-                                    widget.isMe,
-                                  ),
+                                  if (widget.message.type == 'image' &&
+                                      widget.message.imageUrl != null)
+                                    GestureDetector(
+                                      onTap: () {
+                                        // Full screen image viewer
+                                        showDialog(
+                                          context: context,
+                                          builder:
+                                              (_) => Dialog(
+                                                backgroundColor: Colors.black,
+                                                insetPadding: EdgeInsets.zero,
+                                                child: GestureDetector(
+                                                  onTap:
+                                                      () => Navigator.pop(
+                                                        context,
+                                                      ),
+                                                  child: InteractiveViewer(
+                                                    child: Image.network(
+                                                      widget.message.imageUrl!,
+                                                      fit: BoxFit.contain,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                        );
+                                      },
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          widget.message.imageUrl!,
+                                          width: 200,
+                                          height: 200,
+                                          fit: BoxFit.cover,
+                                          loadingBuilder: (
+                                            context,
+                                            child,
+                                            progress,
+                                          ) {
+                                            if (progress == null) return child;
+                                            return Container(
+                                              width: 200,
+                                              height: 200,
+                                              color: Colors.black12,
+                                              child: const Center(
+                                                child:
+                                                    CircularProgressIndicator(),
+                                              ),
+                                            );
+                                          },
+                                          errorBuilder:
+                                              (_, __, ___) => const Icon(
+                                                Icons.broken_image,
+                                              ),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    buildClickableText(
+                                      widget.message.text,
+                                      widget.isMe,
+                                    ),
 
                                   const SizedBox(height: 4),
                                   Row(

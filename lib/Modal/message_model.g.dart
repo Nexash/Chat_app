@@ -19,6 +19,7 @@ MessageModel _$MessageModelFromJson(Map<String, dynamic> json) => MessageModel(
       ) ??
       const {},
   isEdited: json['isEdited'] as bool? ?? false,
+  imageUrl: json['imageUrl'] as String?,
 );
 
 Map<String, dynamic> _$MessageModelToJson(MessageModel instance) =>
@@ -31,4 +32,5 @@ Map<String, dynamic> _$MessageModelToJson(MessageModel instance) =>
       'type': instance.type,
       'reactions': instance.reactions,
       'isEdited': instance.isEdited,
+      'imageUrl': instance.imageUrl,
     };

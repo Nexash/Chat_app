@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:chat_app/FCM/fcm_handler.dart';
 import 'package:chat_app/Provider/theme_provider.dart';
 import 'package:chat_app/UI/HomeScreen.dart';
@@ -7,11 +9,21 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: ".env");
+    log("✅ dotenv loaded");
+    log("CLOUD NAME: ${dotenv.env['CLOUDINARY_CLOUD_NAME']}");
+    log("PRESET: ${dotenv.env['CLOUDINARY_UPLOAD_PRESET']}");
+  } catch (e) {
+    log("❌ dotenv error: $e");
+  }
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   await Hive.initFlutter();
