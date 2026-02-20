@@ -6,6 +6,7 @@ import 'package:chat_app/Controller/chat_controller.dart';
 import 'package:chat_app/Modal/message_model.dart';
 import 'package:chat_app/Modal/user_modal.dart';
 import 'package:chat_app/UI/widget/chat_bubble.dart';
+import 'package:chat_app/UI/widget/drawer_widget.dart';
 import 'package:chat_app/UI/widget/typing_indicator.dart';
 import 'package:chat_app/UI/widget/user_avatar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -34,6 +35,9 @@ class _ChatScreenState extends State<ChatScreen> {
   final ChatController _chatController = ChatController();
   late ImageProvider userImage;
   late ImageProvider currentUserImage;
+  final GlobalKey<ScaffoldState> _scaffoldKey =
+      GlobalKey<ScaffoldState>(); // 👈 here
+
   final ScrollController _scrollController = ScrollController();
   String? chatId;
 
@@ -191,6 +195,8 @@ class _ChatScreenState extends State<ChatScreen> {
         selectedBubbleId.value = null;
       },
       child: Scaffold(
+        key: _scaffoldKey,
+        endDrawer: buildDrawer(context, widget.user),
         resizeToAvoidBottomInset: true,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
@@ -228,6 +234,14 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ],
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.more_vert, color: Colors.white),
+              onPressed: () {
+                _scaffoldKey.currentState?.openEndDrawer(); // 👈 direct open
+              },
+            ),
+          ],
           bottom: const PreferredSize(
             preferredSize: Size.fromHeight(5), // Adds 10 pixels of extra height
             child: SizedBox(), // Just empty space
@@ -243,7 +257,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   else
                     Expanded(
                       child: Padding(
-                        padding: EdgeInsets.only(bottom: 10),
+                        padding: EdgeInsets.only(bottom: 0),
                         child: StreamBuilder<List<MessageModel>>(
                           stream: _messageStream,
                           initialData: _chatController.getCachedMessages(
@@ -364,6 +378,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   Container(
                     padding: const EdgeInsets.only(
+                      top: 0,
                       left: 10,
                       right: 10,
                       bottom: 12,
@@ -381,7 +396,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           child: IconButton(
                             onPressed: _sendImage,
                             icon: const Icon(
-                              Icons.image,
+                              Icons.add_photo_alternate_rounded,
                               color: Colors.white,
                               size: 20,
                             ),
