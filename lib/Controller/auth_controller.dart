@@ -11,8 +11,14 @@ class AuthController {
   UserController userController = UserController();
 
   void handleLogin(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
     try {
       User? user = await authService.loginWithGoogle(forceAccountPicker: true);
+      if (context.mounted) Navigator.of(context).pop();
       if (user != null) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -28,11 +34,17 @@ class AuthController {
         }
       }
     } catch (e) {
+      if (context.mounted) Navigator.of(context).pop();
       if (!context.mounted) return;
 
       // Handle error UI
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text("Server error, Try again later!!!"),
+
+          // Text("Error: $e"),
+          backgroundColor: const Color.fromARGB(255, 228, 102, 93),
+        ),
       );
     }
   }
