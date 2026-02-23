@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:chat_app/Controller/chat_controller.dart';
 import 'package:chat_app/Modal/message_model.dart';
 import 'package:chat_app/Modal/user_modal.dart';
+import 'package:chat_app/UI/chat_media_screen.dart';
 import 'package:chat_app/UI/widget/chat_bubble.dart';
 import 'package:chat_app/UI/widget/typing_indicator.dart';
 import 'package:chat_app/UI/widget/user_avatar.dart';
@@ -241,12 +242,20 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
           actions: [
-            // IconButton(
-            //   icon: const Icon(Icons.more_vert, color: Colors.white),
-            //   onPressed: () {
-            //     _scaffoldKey.currentState?.openEndDrawer(); // 👈 direct open
-            //   },
-            // ),
+            IconButton(
+              icon: const Icon(Icons.snippet_folder, color: Colors.white),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (_) => ChatMediaScreen(
+                          chatId: widget.chatId,
+                        ), // 👈 pass chatId
+                  ),
+                );
+              },
+            ),
           ],
           bottom: const PreferredSize(
             preferredSize: Size.fromHeight(5), // Adds 10 pixels of extra height
