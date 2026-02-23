@@ -4,7 +4,9 @@ import 'package:chat_app/Controller/user_controller.dart';
 import 'package:chat_app/Modal/user_modal.dart';
 import 'package:chat_app/Provider/theme_provider.dart';
 import 'package:chat_app/Service/fcm_service.dart';
+import 'package:chat_app/UI/add_friend_screen.dart';
 import 'package:chat_app/UI/widget/user_tile.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -20,14 +22,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   AuthController authController = AuthController();
   UserController userController = UserController();
   ChatController chatController = ChatController();
-  late Stream<List<UserModal>> _usersStream;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  late String currentUserId;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _updateStatus(true);
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    _usersStream = userController.getUsersExcluding(uid);
+    currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     FCMService.init(context);
   }
 
@@ -63,6 +67,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           style: TextStyle(fontSize: 25, color: Colors.white),
         ),
         actions: [
+          StreamBuilder<DocumentSnapshot>(
+            stream:
+                _firestore.collection('users').doc(currentUserId).snapshots(),
+            builder: (context, snapshot) {
+              final data = snapshot.data?.data() as Map<String, dynamic>?;
+              final List requests = data?['friendRequests'] ?? [];
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.person_add),
+                    onPressed:
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (_) => AddFriendScreen(
+                                  currentUserId: currentUserId,
+                                ),
+                          ),
+                        ),
+                  ),
+                  if (requests.isNotEmpty)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: CircleAvatar(
+                        radius: 8,
+                        backgroundColor: Colors.red,
+                        child: Text(
+                          '${requests.length}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+
           Selector<ThemeProvider, ThemeMode>(
             selector: (_, provider) => provider.themeMode,
             builder: (context, currentTheme, child) {
@@ -107,41 +153,76 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     height: MediaQuery.of(context).size.height * 0.6,
                     width: MediaQuery.of(context).size.width,
 
-                    child: StreamBuilder<List<UserModal>>(
-                      stream: _usersStream,
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData) {
-                          final users = snapshot.data ?? [];
+                    child: StreamBuilder<DocumentSnapshot>(
+                      stream:
+                          _firestore
+                              .collection('users')
+                              .doc(currentUserId)
+                              .snapshots(),
+                      builder: (context, userSnapshot) {
+                        final data =
+                            userSnapshot.data?.data() as Map<String, dynamic>?;
+                        final List<String> friends = List<String>.from(
+                          data?['friends'] ?? [],
+                        );
 
-                          if (users.isEmpty) {
-                            return const Center(child: Text("No Users found"));
-                          }
-
-                          return ListView.builder(
-                            itemCount: users.length,
-                            itemBuilder: (context, index) {
-                              final user = users[index];
-                              return UserTile(
-                                user: user,
-                                chatController: chatController,
-                                userController: userController,
-                              );
-                            },
-                          );
-                        }
-
-                        if (snapshot.hasError) {
-                          return const Center(child: Text("Cant load Users"));
-                        }
-
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
+                        if (friends.isEmpty) {
                           return const Center(
-                            child: CircularProgressIndicator(),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.people_outline,
+                                  size: 60,
+                                  color: Colors.grey,
+                                ),
+                                SizedBox(height: 12),
+                                Text(
+                                  'No friends yet',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                                Text(
+                                  'Tap + to add friends',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
                           );
                         }
 
-                        return const Center(child: Text("No Users found"));
+                        return StreamBuilder<List<UserModal>>(
+                          stream: userController.getFriendsStream(
+                            friends,
+                          ), // 👈 new method
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+                            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                              return const Center(
+                                child: Text("No friends found"),
+                              );
+                            }
+
+                            final users = snapshot.data!;
+                            return ListView.builder(
+                              itemCount: users.length,
+                              itemBuilder: (context, index) {
+                                return UserTile(
+                                  user: users[index],
+                                  chatController: chatController,
+                                  userController: userController,
+                                );
+                              },
+                            );
+                          },
+                        );
                       },
                     ),
                   ),

@@ -14,6 +14,8 @@ class UserModal {
   final bool isOnline;
   final String lastSeen;
   final String photoUrl;
+  final List<String> friends;
+  final List<String> friendRequests;
   UserModal({
     required this.uid,
     required this.name,
@@ -21,6 +23,8 @@ class UserModal {
     this.isOnline = false,
     this.photoUrl = "",
     this.lastSeen = "",
+    this.friends = const [],
+    this.friendRequests = const [],
   });
   factory UserModal.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;

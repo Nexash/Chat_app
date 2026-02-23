@@ -13,6 +13,14 @@ UserModal _$UserModalFromJson(Map<String, dynamic> json) => UserModal(
   isOnline: json['isOnline'] as bool? ?? false,
   photoUrl: json['photoUrl'] as String? ?? "",
   lastSeen: json['lastSeen'] as String? ?? "",
+  friends:
+      (json['friends'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const [],
+  friendRequests:
+      (json['friendRequests'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
 );
 
 Map<String, dynamic> _$UserModalToJson(UserModal instance) => <String, dynamic>{
@@ -22,4 +30,6 @@ Map<String, dynamic> _$UserModalToJson(UserModal instance) => <String, dynamic>{
   'isOnline': instance.isOnline,
   'lastSeen': instance.lastSeen,
   'photoUrl': instance.photoUrl,
+  'friends': instance.friends,
+  'friendRequests': instance.friendRequests,
 };

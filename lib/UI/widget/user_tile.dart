@@ -1,4 +1,5 @@
 import 'package:chat_app/Controller/chat_controller.dart';
+import 'package:chat_app/Controller/friend_controller.dart';
 import 'package:chat_app/Controller/user_controller.dart';
 import 'package:chat_app/Helper/format_message_time.dart';
 import 'package:chat_app/Modal/chat_model.dart';
@@ -28,13 +29,148 @@ class UserTile extends StatefulWidget {
 class _UserTileState extends State<UserTile> {
   final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
   late String chatId;
-
+  OverlayEntry? _overlayEntry;
   @override
   void initState() {
     super.initState();
     List<String> ids = [currentUserId, widget.user.uid];
     ids.sort();
     chatId = ids.join("_");
+  }
+
+  void _showOverlayMenu(BuildContext context) {
+    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final position = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+
+    _overlayEntry = OverlayEntry(
+      builder:
+          (_) => GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _removeOverlay, // ✅ tap outside to dismiss
+            child: Stack(
+              children: [
+                Positioned(
+                  top: position.dy + size.height / 2,
+                  left: position.dx + 60,
+                  child: Material(
+                    elevation: 8,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 200,
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).scaffoldBackgroundColor.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _overlayOption(
+                            icon: Icons.person_remove,
+                            label: 'Unfriend',
+                            color: Colors.red,
+
+                            onTap: () {
+                              _removeOverlay();
+                              _showUnfriendDialog(context);
+                            },
+                          ),
+                          const Divider(height: 1),
+                          _overlayOption(
+                            icon: Icons.delete_outline,
+                            label: 'Delete Chat',
+                            color: Colors.red,
+                            onTap: () {
+                              _removeOverlay();
+                              // hook up delete chat later
+                            },
+                          ),
+                          // ✅ easy to add more options here later
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _showUnfriendDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: Text(widget.user.name),
+            content: Text('Remove ${widget.user.name} from friends?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  try {
+                    await FriendController().removeFriend(
+                      currentUserId: currentUserId,
+                      friendId: widget.user.uid,
+                    );
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to unfriend: $e')),
+                      );
+                    }
+                  }
+                },
+                child: const Text(
+                  'Unfriend',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Widget _overlayOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color color = Colors.black87,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
   }
 
   @override
@@ -76,6 +212,7 @@ class _UserTileState extends State<UserTile> {
             ),
             child: ListTile(
               tileColor: Colors.transparent,
+
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
                 // side: const BorderSide(color: Colors.grey, width: 1),
@@ -113,7 +250,9 @@ class _UserTileState extends State<UserTile> {
                   _buildOnlineStatus(),
                 ],
               ),
+
               onTap: () => _handleTap(context, currentUserId),
+              onLongPress: () => _showOverlayMenu(context),
             ),
           );
         },
@@ -129,15 +268,6 @@ class _UserTileState extends State<UserTile> {
           const Text("Active ")
         else
           Text(formatLastSeen(DateTime.parse(widget.user.lastSeen))),
-        // Container(
-        //   width: 12,
-        //   height: 12,
-        //   decoration: BoxDecoration(
-        //     color: widget.user.isOnline ? Colors.green : Colors.grey,
-        //     shape: BoxShape.circle,
-        //     border: Border.all(color: Colors.white, width: 2),
-        //   ),
-        // ),
       ],
     );
   }

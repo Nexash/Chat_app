@@ -58,6 +58,19 @@ class UserController {
     return _persistentStream!;
   }
 
+  Stream<List<UserModal>> getFriendsStream(List<String> friendIds) {
+    if (friendIds.isEmpty) return Stream.value([]);
+
+    return _firestore
+        .collection('users')
+        .where(FieldPath.documentId, whereIn: friendIds)
+        .snapshots()
+        .map(
+          (snap) =>
+              snap.docs.map((doc) => UserModal.fromDocument(doc)).toList(),
+        );
+  }
+
   Stream<UserModal> getUserStream(String uid) {
     return _firestore
         .collection('users') // Make sure this matches your collection name
