@@ -49,9 +49,13 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     widget.newMessageNotifier.addListener(_onNewMessage);
+
     if (widget.newMessageNotifier.value == widget.message.id) {
-      _shouldAnimate = true; // mark it before first frame
-      _triggerAnimation();
+      _shouldAnimate = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _triggerAnimation();
+        if (mounted) setState(() {});
+      });
     }
   }
 
@@ -73,19 +77,15 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
 
     _scaleAnim = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween(begin: 1.0, end: 0.7), // shrink down
-        weight: 30,
+        tween: Tween(begin: 0.0, end: 1.1), // 👈 start from invisible
+        weight: 60,
       ),
       TweenSequenceItem(
-        tween: Tween(begin: 0.7, end: 1.1), // expand past normal
+        tween: Tween(begin: 1.1, end: 1.0), // settle
         weight: 40,
       ),
-      TweenSequenceItem(
-        tween: Tween(begin: 1.1, end: 1.0), // settle to normal
-        weight: 30,
-      ),
     ]).animate(
-      CurvedAnimation(parent: _animController!, curve: Curves.easeInOut),
+      CurvedAnimation(parent: _animController!, curve: Curves.easeOutBack),
     );
 
     _animController!.forward();
@@ -380,9 +380,14 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                           children: [
                             Container(
                               padding: const EdgeInsets.all(12),
-                              margin: const EdgeInsets.symmetric(
-                                vertical: 4,
-                                horizontal: 8,
+                              margin: EdgeInsets.only(
+                                top: 4,
+                                bottom: 4,
+                                left:
+                                    widget.isMe
+                                        ? 60
+                                        : 8, // 👈 more left padding if isMe (pushes from left)
+                                right: widget.isMe ? 8 : 60,
                               ),
                               decoration: BoxDecoration(
                                 color:
@@ -413,62 +418,95 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                         ? CrossAxisAlignment.end
                                         : CrossAxisAlignment.start,
                                 children: [
-                                  if (widget.message.type == 'image' &&
-                                      widget.message.imageUrl != null)
-                                    GestureDetector(
-                                      onTap: () {
-                                        // Full screen image viewer
-                                        showDialog(
-                                          context: context,
-                                          builder:
-                                              (_) => Dialog(
-                                                backgroundColor: Colors.black,
-                                                insetPadding: EdgeInsets.zero,
-                                                child: GestureDetector(
-                                                  onTap:
-                                                      () => Navigator.pop(
-                                                        context,
+                                  if (widget.message.type == 'image')
+                                    widget.message.imageUrl != null
+                                        ? GestureDetector(
+                                          onTap: () {
+                                            // Full screen image viewer
+                                            showDialog(
+                                              context: context,
+                                              builder:
+                                                  (_) => Dialog(
+                                                    backgroundColor:
+                                                        Colors.black,
+                                                    insetPadding:
+                                                        EdgeInsets.zero,
+                                                    child: GestureDetector(
+                                                      onTap:
+                                                          () => Navigator.pop(
+                                                            context,
+                                                          ),
+                                                      child: InteractiveViewer(
+                                                        child: Image.network(
+                                                          widget
+                                                              .message
+                                                              .imageUrl!,
+                                                          fit: BoxFit.contain,
+                                                        ),
                                                       ),
-                                                  child: InteractiveViewer(
-                                                    child: Image.network(
-                                                      widget.message.imageUrl!,
-                                                      fit: BoxFit.contain,
                                                     ),
                                                   ),
-                                                ),
-                                              ),
-                                        );
-                                      },
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(
-                                          widget.message.imageUrl!,
-                                          width: 200,
-                                          height: 200,
-                                          fit: BoxFit.cover,
-                                          loadingBuilder: (
-                                            context,
-                                            child,
-                                            progress,
-                                          ) {
-                                            if (progress == null) return child;
-                                            return Container(
-                                              width: 200,
-                                              height: 200,
-                                              color: Colors.black12,
-                                              child: const Center(
-                                                child:
-                                                    CircularProgressIndicator(),
-                                              ),
                                             );
                                           },
-                                          errorBuilder:
-                                              (_, __, ___) => const Icon(
-                                                Icons.broken_image,
-                                              ),
-                                        ),
-                                      ),
-                                    )
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            child: Image.network(
+                                              widget.message.imageUrl!,
+                                              width: 200,
+                                              height: 200,
+                                              fit: BoxFit.cover,
+                                              loadingBuilder: (
+                                                context,
+                                                child,
+                                                progress,
+                                              ) {
+                                                if (progress == null)
+                                                  return child;
+                                                return Container(
+                                                  width: 200,
+                                                  height: 200,
+                                                  color: Colors.black12,
+                                                  child: const Center(
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  ),
+                                                );
+                                              },
+                                              errorBuilder:
+                                                  (_, __, ___) => const Icon(
+                                                    Icons.broken_image,
+                                                  ),
+                                            ),
+                                          ),
+                                        )
+                                        : Container(
+                                          width: 200,
+                                          height: 200,
+                                          decoration: BoxDecoration(
+                                            color: Colors.black12,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: const Center(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                CircularProgressIndicator(),
+                                                SizedBox(height: 8),
+                                                Text(
+                                                  'Uploading...',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.black54,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        )
                                   else
                                     buildClickableText(
                                       widget.message.text,
@@ -536,7 +574,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 4,
+                                        blurRadius: 1,
                                       ),
                                     ],
                                   ),
