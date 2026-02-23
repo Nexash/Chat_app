@@ -65,43 +65,56 @@ class _UserTileState extends State<UserTile> {
             lastMsg = data['lastMessage'] ?? "Tap to chat";
           }
 
-          return ListTile(
-            tileColor: Colors.deepPurple[50],
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: Colors.grey, width: 1),
+          return Container(
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.grey,
+                  width: 1,
+                ), // 👈 bottom only
+              ),
             ),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            leading: UserAvatar(
-              url: widget.user.photoUrl,
-              size: 25,
-              isonline: widget.user.isOnline,
-            ),
+            child: ListTile(
+              tileColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                // side: const BorderSide(color: Colors.grey, width: 1),
+              ),
+              // contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              leading: UserAvatar(
+                url: widget.user.photoUrl,
+                size: 25,
+                isonline: widget.user.isOnline,
+              ),
 
-            title: Text(
-              widget.user.name,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            subtitle: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    "$senderName$lastMsg",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight:
-                          isUnread ? FontWeight.bold : FontWeight.normal,
-                      color: isUnread ? Colors.black : Colors.black54,
-                      fontSize: 15,
+              title: Text(
+                widget.user.name,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              subtitle: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Text(
+                      "$senderName$lastMsg",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight:
+                            isUnread ? FontWeight.bold : FontWeight.normal,
+                        color: isUnread ? Colors.black : Colors.black54,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
-                ),
-                _buildOnlineStatus(),
-              ],
+                  _buildOnlineStatus(),
+                ],
+              ),
+              onTap: () => _handleTap(context, currentUserId),
             ),
-            onTap: () => _handleTap(context, currentUserId),
           );
         },
       ),

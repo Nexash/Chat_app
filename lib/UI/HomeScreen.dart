@@ -94,56 +94,70 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ],
       ),
-      body: SizedBox(
-        width: MediaQuery.of(context).size.width,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(height: MediaQuery.of(context).size.height * 0.01),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.6,
-                width: MediaQuery.of(context).size.width,
+      body: Stack(
+        children: [
+          SizedBox(
+            width: MediaQuery.of(context).size.width,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 0),
+                  child: SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    width: MediaQuery.of(context).size.width,
 
-                child: StreamBuilder<List<UserModal>>(
-                  stream: _usersStream,
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData) {
-                      final users = snapshot.data ?? [];
+                    child: StreamBuilder<List<UserModal>>(
+                      stream: _usersStream,
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          final users = snapshot.data ?? [];
 
-                      if (users.isEmpty) {
-                        return const Center(child: Text("No Users found"));
-                      }
+                          if (users.isEmpty) {
+                            return const Center(child: Text("No Users found"));
+                          }
 
-                      return ListView.builder(
-                        itemCount: users.length,
-                        itemBuilder: (context, index) {
-                          final user = users[index];
-                          return UserTile(
-                            user: user,
-                            chatController: chatController,
-                            userController: userController,
+                          return ListView.builder(
+                            itemCount: users.length,
+                            itemBuilder: (context, index) {
+                              final user = users[index];
+                              return UserTile(
+                                user: user,
+                                chatController: chatController,
+                                userController: userController,
+                              );
+                            },
                           );
-                        },
-                      );
-                    }
+                        }
 
-                    if (snapshot.hasError) {
-                      return const Center(child: Text("Cant load Users"));
-                    }
+                        if (snapshot.hasError) {
+                          return const Center(child: Text("Cant load Users"));
+                        }
 
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
 
-                    return const Center(child: Text("No Users found"));
-                  },
+                        return const Center(child: Text("No Users found"));
+                      },
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            bottom: 30,
+            right: 30,
+            child: FloatingActionButton(
+              onPressed: () {},
+              child: Icon(Icons.person_add_rounded),
+            ),
+          ),
+        ],
       ),
     );
   }
