@@ -24,6 +24,14 @@ ChatModel _$ChatModelFromJson(Map<String, dynamic> json) => ChatModel(
           ?.map((e) => e as String)
           .toList() ??
       const [],
+  deletedForA: json['deletedForA'] as bool? ?? false,
+  deletedForB: json['deletedForB'] as bool? ?? false,
+  deletedForAAfter: ChatModel.nullableTimestampFromJson(
+    json['deletedForAAfter'],
+  ),
+  deletedForBAfter: ChatModel.nullableTimestampFromJson(
+    json['deletedForBAfter'],
+  ),
 );
 
 Map<String, dynamic> _$ChatModelToJson(ChatModel instance) => <String, dynamic>{
@@ -34,6 +42,14 @@ Map<String, dynamic> _$ChatModelToJson(ChatModel instance) => <String, dynamic>{
   'activeParticipants': instance.activeParticipants,
   'typingUsers': instance.typingUsers,
   'lastMessage': instance.lastMessage,
+  'deletedForA': instance.deletedForA,
+  'deletedForB': instance.deletedForB,
+  'deletedForAAfter': ChatModel.nullableTimestampToJson(
+    instance.deletedForAAfter,
+  ),
+  'deletedForBAfter': ChatModel.nullableTimestampToJson(
+    instance.deletedForBAfter,
+  ),
   'lastMessageTime': ChatModel.nullableTimestampToJson(
     instance.lastMessageTime,
   ),

@@ -8,24 +8,31 @@ class UserController {
   final String _usersCollection = 'users';
   UserModal? currentUser;
   AuthService authService = AuthService();
+  static Stream<List<UserModal>>? _friendsStream;
+  static List<String>? _cachedFriendIds;
 
   static Stream<List<UserModal>>? _persistentStream;
 
   void clearPersistentStream() {
     _persistentStream = null;
+    _friendsStream = null; // ✅
+    _cachedFriendIds = null;
   }
 
   Future<void> saveUserData(User user) async {
     try {
+      final name = user.displayName ?? 'Unknown User';
       await _firestore.collection(_usersCollection).doc(user.uid).set({
         'uid': user.uid,
-        'name': user.displayName ?? 'Unknown User',
+        'name': name,
+        'nameLower': name.toLowerCase(),
         'email': user.email ?? '',
         'photoUrl': user.photoURL ?? '',
         'isOnline': true,
         'createdAt': FieldValue.serverTimestamp(),
         'lastSeen': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true)); // merge preserves existing fields
+      }, SetOptions(merge: true));
+      // merge preserves existing fields
     } catch (e) {
       print('Error saving user data: $e');
       rethrow;
@@ -61,7 +68,16 @@ class UserController {
   Stream<List<UserModal>> getFriendsStream(List<String> friendIds) {
     if (friendIds.isEmpty) return Stream.value([]);
 
-    return _firestore
+    //  Return cached stream if friend list hasn't changed
+    if (_friendsStream != null &&
+        _cachedFriendIds != null &&
+        _listEquals(_cachedFriendIds!, friendIds)) {
+      return _friendsStream!;
+    }
+
+    //  New friends list — create fresh stream
+    _cachedFriendIds = List.from(friendIds);
+    _friendsStream = _firestore
         .collection('users')
         .where(FieldPath.documentId, whereIn: friendIds)
         .snapshots()
@@ -69,6 +85,23 @@ class UserController {
           (snap) =>
               snap.docs.map((doc) => UserModal.fromDocument(doc)).toList(),
         );
+
+    return _friendsStream!;
+  }
+
+  bool _listEquals(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    final sortedA = List.from(a)..sort();
+    final sortedB = List.from(b)..sort();
+    for (int i = 0; i < sortedA.length; i++) {
+      if (sortedA[i] != sortedB[i]) return false;
+    }
+    return true;
+  }
+
+  void clearFriendsStream() {
+    _friendsStream = null;
+    _cachedFriendIds = null;
   }
 
   Stream<UserModal> getUserStream(String uid) {

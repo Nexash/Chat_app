@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:chat_app/Controller/friend_controller.dart';
@@ -18,6 +19,18 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   final FriendController _friendController = FriendController();
   List<UserModal> _results = [];
   bool _isLoading = false;
+  Timer? _debounce;
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (query.trim().isNotEmpty) {
+        _search(query.trim().toLowerCase()); // 👈 lowercase before searching
+      } else {
+        setState(() => _results = []);
+      }
+    });
+  }
 
   Future<void> _search(String query) async {
     setState(() => _isLoading = true);
@@ -55,12 +68,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
             padding: const EdgeInsets.all(12),
             child: TextField(
               controller: _searchController,
-              onChanged: (val) {
-                if (val.length >= 2)
-                  _search(val);
-                else
-                  setState(() => _results = []);
-              },
+              onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Search by name...',
                 prefixIcon: const Icon(Icons.search),

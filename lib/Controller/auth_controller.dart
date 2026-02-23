@@ -18,6 +18,12 @@ class AuthController {
     );
     try {
       User? user = await authService.loginWithGoogle(forceAccountPicker: true);
+
+      if (user != null) {
+        await userController.saveUserData(
+          user,
+        ); // 👈 this saves nameLower + runs migration
+      }
       if (context.mounted) Navigator.of(context).pop();
       if (user != null) {
         if (context.mounted) {

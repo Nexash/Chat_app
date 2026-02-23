@@ -11,6 +11,7 @@ class UserModal {
   final String uid;
   final String name;
   final String email;
+  final String nameLower;
   final bool isOnline;
   final String lastSeen;
   final String photoUrl;
@@ -20,6 +21,7 @@ class UserModal {
     required this.uid,
     required this.name,
     required this.email,
+    this.nameLower = '',
     this.isOnline = false,
     this.photoUrl = "",
     this.lastSeen = "",

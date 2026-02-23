@@ -16,6 +16,7 @@ class MessageModel {
   final bool isEdited;
   final String? imageUrl;
   final bool uploading;
+  final bool deleted;
 
   MessageModel({
     required this.id,
@@ -28,6 +29,7 @@ class MessageModel {
     this.isEdited = false,
     this.imageUrl,
     this.uploading = false,
+    this.deleted = false,
   });
 
   factory MessageModel.fromJson(Map<String, dynamic> json) =>

@@ -12,6 +12,19 @@ class ChatModel {
   final List<String> activeParticipants;
   final List<String> typingUsers;
   final String? lastMessage;
+  final bool deletedForA;
+  final bool deletedForB;
+  @JsonKey(
+    fromJson: ChatModel.nullableTimestampFromJson,
+    toJson: ChatModel.nullableTimestampToJson,
+  )
+  final DateTime? deletedForAAfter; // ✅ DateTime not String
+
+  @JsonKey(
+    fromJson: ChatModel.nullableTimestampFromJson,
+    toJson: ChatModel.nullableTimestampToJson,
+  )
+  final DateTime? deletedForBAfter;
   @JsonKey(
     fromJson: ChatModel.nullableTimestampFromJson,
     toJson: ChatModel.nullableTimestampToJson,
@@ -27,6 +40,10 @@ class ChatModel {
     this.lastMassageSender,
     this.lastMessageRead,
     this.typingUsers = const [],
+    this.deletedForA = false,
+    this.deletedForB = false,
+    this.deletedForAAfter,
+    this.deletedForBAfter,
   });
 
   factory ChatModel.fromJson(Map<String, dynamic> json) =>

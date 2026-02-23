@@ -6,7 +6,6 @@ import 'package:chat_app/Controller/chat_controller.dart';
 import 'package:chat_app/Modal/message_model.dart';
 import 'package:chat_app/Modal/user_modal.dart';
 import 'package:chat_app/UI/widget/chat_bubble.dart';
-import 'package:chat_app/UI/widget/drawer_widget.dart';
 import 'package:chat_app/UI/widget/typing_indicator.dart';
 import 'package:chat_app/UI/widget/user_avatar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -203,7 +202,7 @@ class _ChatScreenState extends State<ChatScreen> {
       },
       child: Scaffold(
         key: _scaffoldKey,
-        endDrawer: buildDrawer(context, widget.user),
+        // endDrawer: buildDrawer(context, widget.user),
         resizeToAvoidBottomInset: true,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
@@ -242,12 +241,12 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.more_vert, color: Colors.white),
-              onPressed: () {
-                _scaffoldKey.currentState?.openEndDrawer(); // 👈 direct open
-              },
-            ),
+            // IconButton(
+            //   icon: const Icon(Icons.more_vert, color: Colors.white),
+            //   onPressed: () {
+            //     _scaffoldKey.currentState?.openEndDrawer(); // 👈 direct open
+            //   },
+            // ),
           ],
           bottom: const PreferredSize(
             preferredSize: Size.fromHeight(5), // Adds 10 pixels of extra height
@@ -283,7 +282,24 @@ class _ChatScreenState extends State<ChatScreen> {
                               );
                             }
 
-                            final messages = snapshot.data ?? [];
+                            var messages = snapshot.data ?? [];
+
+                            final participants = [
+                              currentUserId,
+                              widget.user.uid,
+                            ]..sort();
+                            final isUserA = participants.first == currentUserId;
+                            final cutoff =
+                                isUserA
+                                    ? _chatController.cutoffForA(chatId!)
+                                    : _chatController.cutoffForB(chatId!);
+
+                            if (cutoff != null) {
+                              messages =
+                                  messages
+                                      .where((m) => m.timestamp.isAfter(cutoff))
+                                      .toList();
+                            }
 
                             if (messages.isNotEmpty) {
                               final latestMessage = messages.first;

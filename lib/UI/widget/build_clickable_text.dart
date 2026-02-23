@@ -6,7 +6,17 @@ final RegExp linkRegex = RegExp(
   r'((https?:\/\/)|(www\.))[^\s]+',
   caseSensitive: false,
 );
-Widget buildClickableText(String text, bool isMe) {
+Widget buildClickableText(String text, bool isMe, {bool deleted = false}) {
+  if (deleted) {
+    return Text(
+      'This message was deleted',
+      style: TextStyle(
+        fontStyle: FontStyle.italic,
+        color: isMe ? Colors.white60 : Colors.black38,
+      ),
+      textAlign: isMe ? TextAlign.right : TextAlign.left,
+    );
+  }
   final List<InlineSpan> spans = [];
 
   //  Split the text into parts

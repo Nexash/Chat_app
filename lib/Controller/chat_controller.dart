@@ -21,6 +21,12 @@ class ChatController {
 
   bool hasMore(String chatId) => _hasMore[chatId] ?? true;
   final Map<String, Timer> _disposeTimers = {};
+  final Map<String, DateTime?> _cutoffForA = {};
+  final Map<String, DateTime?> _cutoffForB = {};
+  final Map<String, List<String>> _participantsCache = {};
+  final Map<String, StreamSubscription> _chatDocSubscriptions = {};
+  DateTime? cutoffForA(String chatId) => _cutoffForA[chatId];
+  DateTime? cutoffForB(String chatId) => _cutoffForB[chatId];
 
   Stream<List<MessageModel>> getMessages(String chatId) {
     if (_disposeTimers.containsKey(chatId)) {
@@ -38,6 +44,30 @@ class ChatController {
 
     final controller = StreamController<List<MessageModel>>.broadcast();
     _controllers[chatId] = controller;
+    final chatDocSub = _firestore
+        .collection('chats')
+        .doc(chatId)
+        .snapshots()
+        .listen((chatSnap) {
+          if (chatSnap.exists) {
+            final data = chatSnap.data()!;
+            _participantsCache[chatId] = List<String>.from(
+              data['participants'] ?? [],
+            );
+            _cutoffForA[chatId] =
+                data['deletedForAAfter'] is Timestamp
+                    ? (data['deletedForAAfter'] as Timestamp).toDate()
+                    : null;
+            _cutoffForB[chatId] =
+                data['deletedForBAfter'] is Timestamp
+                    ? (data['deletedForBAfter'] as Timestamp).toDate()
+                    : null;
+            if (!controller.isClosed && _dataCache[chatId] != null) {
+              controller.add(_dataCache[chatId]!);
+            }
+          }
+        });
+    _chatDocSubscriptions[chatId] = chatDocSub;
     // subscription works as the active phone call between app and google server
     final subscription = _firestore
         .collection('chats')
@@ -158,7 +188,7 @@ class ChatController {
   void scheduleDispose(String chatId) {
     _disposeTimers[chatId]?.cancel();
 
-    _disposeTimers[chatId] = Timer(const Duration(hours: 24), () {
+    _disposeTimers[chatId] = Timer(const Duration(minutes: 1), () {
       log('[$chatId] 5-min timer fired — disposing chat.');
       disposeChat(chatId);
     });
@@ -175,6 +205,9 @@ class ChatController {
     _dataCache.remove(chatId);
     _lastMessageDoc.remove(chatId);
     _hasMore.remove(chatId);
+    _cutoffForA.remove(chatId);
+    _cutoffForB.remove(chatId);
+    _participantsCache.remove(chatId);
     log('[$chatId] Fully disposed.');
   }
 
@@ -393,12 +426,27 @@ class ChatController {
         .doc(chatId)
         .collection('messages')
         .doc(messageId)
-        .delete();
+        .update({'deleted': true});
 
-    // Remove from local cache immediately so UI updates instantly
+    // Patch the cached message so UI updates instantly
     final existing = _dataCache[chatId] ?? [];
-    _dataCache[chatId] = existing.where((m) => m.id != messageId).toList();
-
+    _dataCache[chatId] =
+        existing.map((m) {
+          if (m.id != messageId) return m;
+          return MessageModel(
+            id: m.id,
+            senderId: m.senderId,
+            text: m.text,
+            timestamp: m.timestamp,
+            read: m.read,
+            type: m.type,
+            reactions: m.reactions,
+            isEdited: m.isEdited,
+            imageUrl: m.imageUrl,
+            uploading: m.uploading,
+            deleted: true,
+          );
+        }).toList();
     // Push updated cache to stream
     final controller = _controllers[chatId];
     if (controller != null && !controller.isClosed) {
@@ -406,6 +454,77 @@ class ChatController {
     }
 
     log('[$chatId] Message $messageId deleted.');
+  }
+
+  // delete chat
+  Future<void> deleteChat({
+    required String chatId,
+    required String currentUserId,
+  }) async {
+    try {
+      final chatRef = _firestore.collection('chats').doc(chatId);
+      final chatDoc = await chatRef.get();
+      if (!chatDoc.exists) return;
+
+      final data = chatDoc.data()!;
+      final List<String> participants = List<String>.from(
+        data['participants'] ?? [],
+      );
+
+      // Figure out if current user is A or B
+      final String userA = participants.first;
+      final bool isUserA = currentUserId == userA;
+
+      final now = Timestamp.now();
+
+      // Check if the OTHER user has already deleted
+      final bool otherAlreadyDeleted =
+          isUserA
+              ? (data['deletedForB'] ?? false)
+              : (data['deletedForA'] ?? false);
+
+      final Timestamp? otherCutoff =
+          isUserA ? data['deletedForBAfter'] : data['deletedForAAfter'];
+
+      // ✅ Always set current user's delete flag first
+      await chatRef.set({
+        isUserA ? 'deletedForA' : 'deletedForB': true,
+        isUserA ? 'deletedForAAfter' : 'deletedForBAfter': now,
+      }, SetOptions(merge: true));
+
+      if (otherAlreadyDeleted && otherCutoff != null) {
+        // ✅ Both have now deleted — clean up messages older than both cutoffs
+
+        // Fetch all messages
+        final messagesSnap = await chatRef.collection('messages').get();
+
+        final batch = _firestore.batch();
+
+        for (final doc in messagesSnap.docs) {
+          final msgTimestamp = doc.data()['timestamp'] as Timestamp?;
+          if (msgTimestamp == null) continue;
+
+          // Permanently delete messages before BOTH cutoffs
+          if (msgTimestamp.compareTo(now) < 0 &&
+              msgTimestamp.compareTo(otherCutoff) < 0) {
+            batch.delete(doc.reference);
+          }
+        }
+
+        // Check if any messages remain after cleanup
+        await batch.commit();
+
+        final remaining = await chatRef.collection('messages').get();
+        if (remaining.docs.isEmpty) {
+          // No messages left — delete the chat doc too
+          await chatRef.delete();
+        }
+      }
+      log('✅ Chat deleted for $currentUserId');
+    } catch (e) {
+      log('❌ deleteChat error: $e');
+      rethrow;
+    }
   }
 
   //typing controller

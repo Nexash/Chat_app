@@ -72,12 +72,13 @@ class FriendController {
     required String currentUserId,
   }) async {
     if (query.trim().isEmpty) return [];
+    final lowerQuery = query.trim().toLowerCase();
 
     final snapshot =
         await _firestore
             .collection('users')
-            .where('name', isGreaterThanOrEqualTo: query)
-            .where('name', isLessThanOrEqualTo: '$query\uf8ff')
+            .where('nameLower', isGreaterThanOrEqualTo: lowerQuery)
+            .where('nameLower', isLessThanOrEqualTo: '$lowerQuery\uf8ff')
             .get();
 
     return snapshot.docs

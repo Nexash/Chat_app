@@ -140,105 +140,91 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          SizedBox(
-            width: MediaQuery.of(context).size.width,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 0),
-                  child: SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.6,
-                    width: MediaQuery.of(context).size.width,
+      body: SizedBox(
+        width: MediaQuery.of(context).size.width,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 0),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.6,
+                width: MediaQuery.of(context).size.width,
 
-                    child: StreamBuilder<DocumentSnapshot>(
-                      stream:
-                          _firestore
-                              .collection('users')
-                              .doc(currentUserId)
-                              .snapshots(),
-                      builder: (context, userSnapshot) {
-                        final data =
-                            userSnapshot.data?.data() as Map<String, dynamic>?;
-                        final List<String> friends = List<String>.from(
-                          data?['friends'] ?? [],
-                        );
+                child: StreamBuilder<DocumentSnapshot>(
+                  stream:
+                      _firestore
+                          .collection('users')
+                          .doc(currentUserId)
+                          .snapshots(),
+                  builder: (context, userSnapshot) {
+                    final data =
+                        userSnapshot.data?.data() as Map<String, dynamic>?;
+                    final List<String> friends = List<String>.from(
+                      data?['friends'] ?? [],
+                    );
 
-                        if (friends.isEmpty) {
-                          return const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.people_outline,
-                                  size: 60,
-                                  color: Colors.grey,
-                                ),
-                                SizedBox(height: 12),
-                                Text(
-                                  'No friends yet',
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                                Text(
-                                  'Tap + to add friends',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
+                    if (friends.isEmpty) {
+                      return const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              size: 60,
+                              color: Colors.grey,
                             ),
+                            SizedBox(height: 12),
+                            Text(
+                              'No friends yet',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                            Text(
+                              'Tap + to add friends',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return StreamBuilder<List<UserModal>>(
+                      stream: userController.getFriendsStream(
+                        friends,
+                      ), // 👈 new method
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
                           );
                         }
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const Center(child: Text("No friends found"));
+                        }
 
-                        return StreamBuilder<List<UserModal>>(
-                          stream: userController.getFriendsStream(
-                            friends,
-                          ), // 👈 new method
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            }
-                            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                              return const Center(
-                                child: Text("No friends found"),
-                              );
-                            }
-
-                            final users = snapshot.data!;
-                            return ListView.builder(
-                              itemCount: users.length,
-                              itemBuilder: (context, index) {
-                                return UserTile(
-                                  user: users[index],
-                                  chatController: chatController,
-                                  userController: userController,
-                                );
-                              },
+                        final users = snapshot.data!;
+                        return ListView.builder(
+                          itemCount: users.length,
+                          itemBuilder: (context, index) {
+                            return UserTile(
+                              user: users[index],
+                              chatController: chatController,
+                              userController: userController,
                             );
                           },
                         );
                       },
-                    ),
-                  ),
+                    );
+                  },
                 ),
-              ],
+              ),
             ),
-          ),
-          Positioned(
-            bottom: 30,
-            right: 30,
-            child: FloatingActionButton(
-              onPressed: () {},
-              child: Icon(Icons.person_add_rounded),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -52,7 +52,7 @@ class _UserTileState extends State<UserTile> {
               children: [
                 Positioned(
                   top: position.dy + size.height / 2,
-                  left: position.dx + 60,
+                  left: position.dx + 200,
                   child: Material(
                     elevation: 8,
                     borderRadius: BorderRadius.circular(12),
@@ -82,9 +82,51 @@ class _UserTileState extends State<UserTile> {
                             icon: Icons.delete_outline,
                             label: 'Delete Chat',
                             color: Colors.red,
-                            onTap: () {
+                            onTap: () async {
                               _removeOverlay();
-                              // hook up delete chat later
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder:
+                                    (_) => AlertDialog(
+                                      title: const Text('Delete Chat'),
+                                      content: Text(
+                                        'Delete your chat with ${widget.user.name}?',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed:
+                                              () =>
+                                                  Navigator.pop(context, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed:
+                                              () =>
+                                                  Navigator.pop(context, true),
+                                          child: const Text(
+                                            'Delete',
+                                            style: TextStyle(color: Colors.red),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                              );
+                              if (confirm == true) {
+                                try {
+                                  await widget.chatController.deleteChat(
+                                    chatId: chatId,
+                                    currentUserId: currentUserId,
+                                  );
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Failed to delete: $e'),
+                                      ),
+                                    );
+                                  }
+                                }
+                              }
                             },
                           ),
                           // ✅ easy to add more options here later

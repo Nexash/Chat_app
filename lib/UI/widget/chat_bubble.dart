@@ -85,7 +85,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
         weight: 40,
       ),
     ]).animate(
-      CurvedAnimation(parent: _animController!, curve: Curves.easeOutBack),
+      CurvedAnimation(parent: _animController!, curve: Curves.easeOut),
     );
 
     _animController!.forward();
@@ -367,7 +367,8 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                 builder: (context, selectedId, _) {
                   final isEmojiBarVisible = selectedId == widget.message.id;
                   return GestureDetector(
-                    onLongPress: _toggleEmojiBar,
+                    onLongPress:
+                        widget.message.deleted ? () {} : _toggleEmojiBar,
 
                     child: Column(
                       crossAxisAlignment:
@@ -391,7 +392,9 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                               ),
                               decoration: BoxDecoration(
                                 color:
-                                    widget.isMe
+                                    widget.message.deleted
+                                        ? theme?.withValues(alpha: 0.5)
+                                        : widget.isMe
                                         ? theme?.withValues(alpha: 0.7)
                                         : Colors.white,
                                 borderRadius: BorderRadius.only(
@@ -419,7 +422,18 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                         : CrossAxisAlignment.start,
                                 children: [
                                   if (widget.message.type == 'image')
-                                    (widget.message.uploading ||
+                                    widget.message.deleted
+                                        ? Text(
+                                          "This message was deleted",
+                                          style: TextStyle(
+                                            fontStyle: FontStyle.italic,
+                                            color:
+                                                widget.isMe
+                                                    ? Colors.white60
+                                                    : Colors.black38,
+                                          ),
+                                        )
+                                        : (widget.message.uploading ||
                                             (widget.message.imageUrl == null ||
                                                 widget
                                                     .message
@@ -517,6 +531,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                     buildClickableText(
                                       widget.message.text,
                                       widget.isMe,
+                                      deleted: widget.message.deleted,
                                     ),
 
                                   const SizedBox(height: 4),
@@ -570,25 +585,32 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                 bottom: -10,
                                 right: widget.isMe ? 5 : null,
                                 left: widget.isMe ? null : 5,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 1,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Wrap(
-                                    spacing: 4,
-                                    children: _buildReactionChips(),
-                                  ),
-                                ),
+                                child:
+                                    widget.message.deleted
+                                        ? SizedBox.shrink()
+                                        : Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(
+                                                  0.1,
+                                                ),
+                                                blurRadius: 1,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Wrap(
+                                            spacing: 4,
+                                            children: _buildReactionChips(),
+                                          ),
+                                        ),
                               ),
                           ],
                         ),
