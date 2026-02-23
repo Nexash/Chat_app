@@ -228,13 +228,6 @@ class ChatController {
               : participants.first;
       final bool isReadByRecipient = activeUsers.contains(recipientId);
 
-      // Upload to Cloudinary
-      final String imageUrl = await CloudinaryService.uploadImage(
-        imageFile: imageFile,
-        chatId: chatId,
-      );
-
-      // Save message to Firestore
       final messageRef =
           _firestore
               .collection('chats')
@@ -242,28 +235,39 @@ class ChatController {
               .collection('messages')
               .doc();
 
-      final newMessage = MessageModel(
+      //  Write placeholder FIRST — before any upload
+      final placeholderMessage = MessageModel(
         id: messageRef.id,
         senderId: senderId,
         text: '',
         timestamp: DateTime.now(),
         read: isReadByRecipient,
         type: 'image',
-        imageUrl: imageUrl,
+        imageUrl: '',
+        uploading: true,
       );
 
       final batch = _firestore.batch();
-      batch.set(messageRef, newMessage.toJson());
+      batch.set(messageRef, placeholderMessage.toJson());
       batch.set(_firestore.collection('chats').doc(chatId), {
         'lastMessage': '📷 Photo',
-        'lastMessageTime': Timestamp.fromDate(newMessage.timestamp),
+        'lastMessageTime': Timestamp.fromDate(placeholderMessage.timestamp),
         'lastMessageRead': isReadByRecipient,
         'lastMassageSender': senderId,
         'participants': participants,
       }, SetOptions(merge: true));
-      await batch.commit();
+      await batch.commit(); // ← user sees spinner instantly after this
 
-      // Send FCM notification if recipient not active
+      // Now upload to Cloudinary
+      final String imageUrl = await CloudinaryService.uploadImage(
+        imageFile: imageFile,
+        chatId: chatId,
+      );
+
+      // Update the same doc with real URL
+      await messageRef.update({'imageUrl': imageUrl, 'uploading': false});
+
+      //  FCM notification after upload completes
       if (!isReadByRecipient) {
         final recipientDoc =
             await _firestore.collection('users').doc(recipientId).get();
@@ -282,8 +286,9 @@ class ChatController {
         }
       }
 
-      return newMessage.id;
+      return messageRef.id;
     } catch (e) {
+      // ✅ Clean up placeholder if upload fails
       log("Can't send image: $e");
       return null;
     }

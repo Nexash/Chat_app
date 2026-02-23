@@ -419,8 +419,40 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                         : CrossAxisAlignment.start,
                                 children: [
                                   if (widget.message.type == 'image')
-                                    widget.message.imageUrl != null
-                                        ? GestureDetector(
+                                    (widget.message.uploading ||
+                                            (widget.message.imageUrl == null ||
+                                                widget
+                                                    .message
+                                                    .imageUrl!
+                                                    .isEmpty))
+                                        ? Container(
+                                          // ← spinner when uploading
+                                          width: 200,
+                                          height: 200,
+                                          decoration: BoxDecoration(
+                                            color: Colors.black12,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: const Center(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                CircularProgressIndicator(),
+                                                SizedBox(height: 8),
+                                                Text(
+                                                  'Uploading...',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.black54,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        )
+                                        : GestureDetector(
                                           onTap: () {
                                             // Full screen image viewer
                                             showDialog(
@@ -478,32 +510,6 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                                   (_, __, ___) => const Icon(
                                                     Icons.broken_image,
                                                   ),
-                                            ),
-                                          ),
-                                        )
-                                        : Container(
-                                          width: 200,
-                                          height: 200,
-                                          decoration: BoxDecoration(
-                                            color: Colors.black12,
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                          child: const Center(
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                CircularProgressIndicator(),
-                                                SizedBox(height: 8),
-                                                Text(
-                                                  'Uploading...',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.black54,
-                                                  ),
-                                                ),
-                                              ],
                                             ),
                                           ),
                                         )

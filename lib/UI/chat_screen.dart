@@ -157,28 +157,35 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _sendImage() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? picked = await picker.pickImage(
-      source: ImageSource.gallery,
+
+    final List<XFile> pickedFiles = await picker.pickMultiImage(
       imageQuality: 90,
     );
 
-    if (picked == null) return;
+    if (pickedFiles.isEmpty) return;
+
+    if (pickedFiles.length > 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You can only send up to 10 images at once'),
+        ),
+      );
+      return;
+    }
 
     try {
-      final newMessageId = await _chatController.sendImageMessage(
-        chatId: chatId!,
-        senderId: currentUserId,
-        imageFile: File(picked.path),
+      await Future.wait(
+        pickedFiles.map(
+          (picked) => _chatController.sendImageMessage(
+            chatId: chatId!,
+            senderId: currentUserId,
+            imageFile: File(picked.path),
+          ),
+        ),
       );
 
       if (!mounted) return;
-      if (newMessageId != null) {
-        _newMessageNotifier.value = newMessageId;
-        _scrollController.jumpTo(0);
-        Future.delayed(const Duration(milliseconds: 600), () {
-          if (mounted) _newMessageNotifier.value = null;
-        });
-      }
+      _scrollController.jumpTo(0);
     } catch (e) {
       log("Image send error: $e");
     }

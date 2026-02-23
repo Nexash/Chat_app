@@ -15,6 +15,7 @@ class MessageModel {
   final Map<String, String> reactions;
   final bool isEdited;
   final String? imageUrl;
+  final bool uploading;
 
   MessageModel({
     required this.id,
@@ -26,6 +27,7 @@ class MessageModel {
     this.reactions = const {},
     this.isEdited = false,
     this.imageUrl,
+    this.uploading = false,
   });
 
   factory MessageModel.fromJson(Map<String, dynamic> json) =>
