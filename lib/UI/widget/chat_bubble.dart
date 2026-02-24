@@ -239,50 +239,52 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                     child: Row(
                       mainAxisSize: MainAxisSize.max,
                       children: [
-                        if (widget.isMe)
+                        if (widget.message.type != "image")
+                          if (widget.isMe)
+                            _buildOptionBtn(
+                              icon: Icons.edit_note,
+                              label: "Edit",
+                              color: Colors.black87,
+                              onTap: () {
+                                _messageController.text = widget.message.text;
+                                _messageController
+                                    .selection = TextSelection.fromPosition(
+                                  TextPosition(
+                                    offset: _messageController.text.length,
+                                  ),
+                                );
+                                Navigator.pop(context);
+                                _showEditBox(context, theme);
+                              },
+                            ),
+                        if (widget.message.type != "image")
                           _buildOptionBtn(
-                            icon: Icons.edit_note,
-                            label: "Edit",
+                            icon: Icons.copy,
+                            label: "Copy",
                             color: Colors.black87,
-                            onTap: () {
-                              _messageController.text = widget.message.text;
-                              _messageController
-                                  .selection = TextSelection.fromPosition(
-                                TextPosition(
-                                  offset: _messageController.text.length,
-                                ),
+                            onTap: () async {
+                              await Clipboard.setData(
+                                ClipboardData(text: widget.message.text),
                               );
-                              Navigator.pop(context);
-                              _showEditBox(context, theme);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text("Copied to clipboard"),
+                                    duration: const Duration(seconds: 1),
+                                    behavior: SnackBarBehavior.floating,
+                                    margin: EdgeInsets.only(
+                                      right: 20,
+                                      left: 20,
+                                      bottom:
+                                          MediaQuery.of(context).size.height *
+                                          0.07,
+                                    ),
+                                  ),
+                                );
+                              }
                             },
                           ),
-                        _buildOptionBtn(
-                          icon: Icons.copy,
-                          label: "Copy",
-                          color: Colors.black87,
-                          onTap: () async {
-                            await Clipboard.setData(
-                              ClipboardData(text: widget.message.text),
-                            );
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Text("Copied to clipboard"),
-                                  duration: const Duration(seconds: 1),
-                                  behavior: SnackBarBehavior.floating,
-                                  margin: EdgeInsets.only(
-                                    right: 20,
-                                    left: 20,
-                                    bottom:
-                                        MediaQuery.of(context).size.height *
-                                        0.07,
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                        ),
                         if (widget.isMe)
                           _buildOptionBtn(
                             icon: Icons.delete_outline,

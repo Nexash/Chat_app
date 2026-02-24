@@ -23,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   UserController userController = UserController();
   ChatController chatController = ChatController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
+  OverlayEntry? _overlayEntry;
   late String currentUserId;
   @override
   void initState() {
@@ -55,6 +55,144 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (uid != null) {
       userController.updateOnlineStatus(uid, isOnline);
     }
+  }
+
+  void _showAppbarOverlayMenu(BuildContext context) {
+    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final position = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+
+    _overlayEntry = OverlayEntry(
+      builder:
+          (_) => GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _removeOverlay, // ✅ tap outside to dismiss
+            child: Stack(
+              children: [
+                Positioned(
+                  top: position.dy + size.height / 9,
+                  // left: position.dx + 200,
+                  right: 10,
+                  child: Material(
+                    elevation: 8,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 200,
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).scaffoldBackgroundColor.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _overlayOption(
+                            icon: Icon(
+                              Icons.brightness_6,
+                            ), // Better icon for theme
+                            label: 'Toggle Theme',
+                            color: Colors.black,
+                            onTap: () {
+                              // 1. Get the provider
+                              final provider = Provider.of<ThemeProvider>(
+                                context,
+                                listen: false,
+                              );
+
+                              // 2. Run the logic
+                              provider.toggleTheme(
+                                provider.themeMode == ThemeMode.light,
+                              );
+
+                              // 3. Close the menu
+                              _removeOverlay();
+                            },
+                          ),
+                          const Divider(height: 1),
+                          _overlayOption(
+                            icon: Icon(Icons.logout),
+                            label: 'Logout',
+                            color: Colors.red, // Red for logout is standard
+                            onTap: () {
+                              _removeOverlay(); // Close menu first
+
+                              // Show confirmation
+                              showDialog(
+                                context: context,
+                                builder:
+                                    (context) => AlertDialog(
+                                      title: const Text('Logout'),
+                                      content: const Text(
+                                        'Are you sure you want to spill the last of the tea and leave?',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed:
+                                              () => Navigator.pop(context),
+                                          child: const Text('Stay'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            userController
+                                                .clearPersistentStream();
+                                            authController.logout(context);
+                                          },
+                                          child: const Text(
+                                            'Logout',
+                                            style: TextStyle(color: Colors.red),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  Widget _overlayOption({
+    required Icon icon,
+    required String label,
+    required VoidCallback onTap,
+    Color color = Colors.black87,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon.icon, color: color, size: 24),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
   }
 
   @override
@@ -108,36 +246,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               );
             },
           ),
-
-          Selector<ThemeProvider, ThemeMode>(
-            selector: (_, provider) => provider.themeMode,
-            builder: (context, currentTheme, child) {
-              return IconButton(
-                icon: Icon(
-                  // Change icon based on current theme
-                  currentTheme == ThemeMode.dark
-                      ? Icons.light_mode
-                      : Icons.dark_mode,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  final provider = Provider.of<ThemeProvider>(
-                    context,
-                    listen: false,
-                  );
-                  provider.toggleTheme(provider.themeMode == ThemeMode.light);
-                },
-              );
-            },
-          ),
           IconButton(
-            iconSize: 22,
             onPressed: () {
-              userController.clearPersistentStream();
-              authController.logout(context);
+              _showAppbarOverlayMenu(context);
             },
-            icon: Icon(Icons.logout, color: Colors.white),
+            icon: Icon(Icons.more_vert),
           ),
+
+          // IconButton(
+          //   iconSize: 22,
+          //   onPressed: () {
+          //     userController.clearPersistentStream();
+          //     authController.logout(context);
+          //   },
+          //   icon: Icon(Icons.logout, color: Colors.white),
+          // ),
         ],
       ),
       body: SizedBox(
