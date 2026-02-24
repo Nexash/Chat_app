@@ -271,6 +271,7 @@ class _UserTileState extends State<UserTile> {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: Colors.black,
                 ),
               ),
               subtitle: Row(
@@ -309,7 +310,10 @@ class _UserTileState extends State<UserTile> {
         if (widget.user.isOnline)
           const Text("Active ")
         else
-          Text(formatLastSeen(DateTime.parse(widget.user.lastSeen))),
+          Text(
+            formatLastSeen(DateTime.parse(widget.user.lastSeen)),
+            style: TextStyle(color: Colors.black),
+          ),
       ],
     );
   }

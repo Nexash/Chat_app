@@ -2,25 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 class ThemeProvider extends ChangeNotifier {
-  final _themeBox = Hive.box('theme');
-  // Default to light mode
+  static const _boxName = 'theme';
+  final _themeBox = Hive.box(_boxName);
+
   ThemeMode _themeMode = ThemeMode.light;
+  Color _seedColor = Colors.deepPurple; // default
 
   ThemeMode get themeMode => _themeMode;
+  Color get seedColor => _seedColor;
 
   ThemeProvider() {
     _loadTheme();
   }
+
   void _loadTheme() {
-    String savedTheme = _themeBox.get('mode', defaultValue: 'light');
-    _themeMode = savedTheme == 'dark' ? ThemeMode.dark : ThemeMode.light;
-    notifyListeners();
+    try {
+      final savedTheme = _themeBox.get('mode', defaultValue: 'light') as String;
+      _themeMode = savedTheme == 'dark' ? ThemeMode.dark : ThemeMode.light;
+
+      final savedColor =
+          _themeBox.get('seedColor', defaultValue: Colors.deepPurple.value)
+              as int;
+      _seedColor = Color(savedColor);
+    } catch (e) {
+      _themeMode = ThemeMode.light;
+      _seedColor = Colors.deepPurple;
+    }
   }
 
-  // Toggle function
   void toggleTheme(bool isDark) {
     _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
     _themeBox.put('mode', isDark ? 'dark' : 'light');
-    notifyListeners(); // This tells the app to rebuild
+    notifyListeners();
+  }
+
+  void updateSeedColor(Color color) {
+    _seedColor = color;
+    _themeBox.put('seedColor', color.value);
+    notifyListeners();
   }
 }

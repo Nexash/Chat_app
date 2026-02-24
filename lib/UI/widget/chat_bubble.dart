@@ -109,6 +109,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
   void _showEditBox(BuildContext context, Color theme) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: theme.withValues(alpha: 0.9),
       isScrollControlled: true,
       barrierColor: Colors.transparent,
       builder:
@@ -126,10 +127,13 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Padding(
-                            padding: EdgeInsets.only(left: 10.0),
+                            padding: EdgeInsets.only(left: 20.0),
                             child: Text(
                               "Edit message",
-                              style: TextStyle(fontSize: 12),
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
                           IconButton(
@@ -160,6 +164,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                 child: TextField(
                                   minLines: 1,
                                   maxLines: 2,
+                                  style: TextStyle(color: Colors.black),
                                   controller: _messageController,
                                   decoration: const InputDecoration(
                                     contentPadding: EdgeInsets.symmetric(
@@ -221,9 +226,11 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
 
   void _showOptionsSheet(BuildContext context, Color theme) {
     showModalBottomSheet(
+      backgroundColor: theme,
       context: context,
       barrierColor: Colors.transparent,
       isScrollControlled: true,
+
       enableDrag: false,
       routeSettings: const RouteSettings(name: 'options'),
       builder:
@@ -244,7 +251,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                             _buildOptionBtn(
                               icon: Icons.edit_note,
                               label: "Edit",
-                              color: Colors.black87,
+                              color: Colors.white,
                               onTap: () {
                                 _messageController.text = widget.message.text;
                                 _messageController
@@ -261,7 +268,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                           _buildOptionBtn(
                             icon: Icons.copy,
                             label: "Copy",
-                            color: Colors.black87,
+                            color: Colors.white,
                             onTap: () async {
                               await Clipboard.setData(
                                 ClipboardData(text: widget.message.text),
@@ -289,7 +296,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                           _buildOptionBtn(
                             icon: Icons.delete_outline,
                             label: "Delete",
-                            color: Colors.black87,
+                            color: Colors.white,
                             onTap: () async {
                               Navigator.pop(context);
                               FocusManager.instance.primaryFocus?.unfocus();
@@ -707,6 +714,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                       child: const Icon(
                                         Icons.more_horiz,
                                         size: 20,
+                                        color: Colors.black,
                                       ),
                                     ),
                                   ),

@@ -57,10 +57,100 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _showAppbarOverlayMenu(BuildContext context) {
+  void _showColorPickerDialog(
+    BuildContext context,
+    ThemeProvider themeProvider,
+    Color bgColor,
+  ) {
+    Color tempColor = themeProvider.seedColor;
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => StatefulBuilder(
+            // ✅ dialog's own setState
+            builder:
+                (context, setDialogState) => AlertDialog(
+                  backgroundColor: Colors.white,
+                  title: const Text(
+                    'Pick a theme color',
+                    style: TextStyle(color: Colors.black),
+                  ),
+                  content: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children:
+                          [
+                            Colors.deepPurple,
+                            Colors.indigo,
+                            Colors.blue,
+                            Colors.teal,
+                            Colors.green,
+                            Colors.orange,
+                            Colors.red,
+                            Colors.pink,
+                            Colors.brown,
+                            Colors.blueGrey,
+                          ].map((color) {
+                            final isSelected = tempColor == color;
+                            return GestureDetector(
+                              onTap:
+                                  () => setDialogState(
+                                    () => tempColor = color,
+                                  ), // ✅ dialog setState
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Container(
+                                  width: 45,
+                                  height: 45,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border:
+                                        isSelected
+                                            ? Border.all(color: color, width: 3)
+                                            : Border.all(
+                                              color: Colors.transparent,
+                                              width: 3,
+                                            ),
+                                  ),
+                                  padding: const EdgeInsets.all(2),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        themeProvider.updateSeedColor(tempColor);
+                        Navigator.pop(context);
+                      },
+                      child: const Text('Apply'),
+                    ),
+                  ],
+                ),
+          ),
+    );
+  }
+
+  void _showAppbarOverlayMenu(BuildContext context, Color bgColor) {
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
     final position = renderBox.localToGlobal(Offset.zero);
     final size = renderBox.size;
+
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
 
     _overlayEntry = OverlayEntry(
       builder:
@@ -77,39 +167,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     elevation: 8,
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      width: 200,
+                      width: 155,
                       decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).scaffoldBackgroundColor.withValues(alpha: 0.8),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _overlayOption(
-                            icon: Icon(
-                              Icons.brightness_6,
-                            ), // Better icon for theme
-                            label: 'Toggle Theme',
-                            color: Colors.black,
+                            icon: Icon(Icons.color_lens),
+                            label: 'Pick Theme',
+                            color: themeProvider.seedColor,
                             onTap: () {
-                              // 1. Get the provider
-                              final provider = Provider.of<ThemeProvider>(
-                                context,
-                                listen: false,
-                              );
-
-                              // 2. Run the logic
-                              provider.toggleTheme(
-                                provider.themeMode == ThemeMode.light,
-                              );
-
-                              // 3. Close the menu
                               _removeOverlay();
+                              _showColorPickerDialog(
+                                context,
+                                themeProvider,
+                                bgColor,
+                              );
                             },
                           ),
-                          const Divider(height: 1),
+                          const Divider(height: 1, color: Colors.grey),
                           _overlayOption(
                             icon: Icon(Icons.logout),
                             label: 'Logout',
@@ -122,9 +201,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 context: context,
                                 builder:
                                     (context) => AlertDialog(
-                                      title: const Text('Logout'),
+                                      backgroundColor: const Color.fromARGB(
+                                        255,
+                                        227,
+                                        221,
+                                        221,
+                                      ),
+                                      title: const Text(
+                                        'Logout',
+                                        style: TextStyle(color: Colors.black),
+                                      ),
                                       content: const Text(
                                         'Are you sure you want to spill the last of the tea and leave?',
+                                        style: TextStyle(color: Colors.black),
                                       ),
                                       actions: [
                                         TextButton(
@@ -197,9 +286,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.themeMode == ThemeMode.dark;
+    final bgColor =
+        isDark
+            ? Color.alphaBlend(
+              themeProvider.seedColor.withValues(alpha: 0.5),
+              Colors.white, // blend with dark base
+            )
+            : Color.alphaBlend(
+              themeProvider.seedColor.withValues(alpha: 0.08),
+              Colors.white, // blend with white base
+            );
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: bgColor,
       appBar: AppBar(
+        backgroundColor: themeProvider.seedColor.withValues(alpha: 1),
         title: Text(
           "SPILL - SOME - TEA",
           style: TextStyle(fontSize: 25, color: Colors.white),
@@ -248,22 +350,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           IconButton(
             onPressed: () {
-              _showAppbarOverlayMenu(context);
+              _showAppbarOverlayMenu(context, bgColor);
             },
             icon: Icon(Icons.more_vert),
           ),
-
-          // IconButton(
-          //   iconSize: 22,
-          //   onPressed: () {
-          //     userController.clearPersistentStream();
-          //     authController.logout(context);
-          //   },
-          //   icon: Icon(Icons.logout, color: Colors.white),
-          // ),
         ],
       ),
-      body: SizedBox(
+      body: Container(
+        color: bgColor,
         width: MediaQuery.of(context).size.width,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,

@@ -3,9 +3,7 @@ import 'dart:developer';
 import 'package:chat_app/FCM/fcm_handler.dart';
 import 'package:chat_app/Provider/theme_provider.dart';
 import 'package:chat_app/UI/HomeScreen.dart';
-import 'package:chat_app/UI/login_screen.dart';
 import 'package:chat_app/firebase_options.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -43,56 +41,63 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, child) {
-        return MaterialApp(
-          themeMode: themeProvider.themeMode,
-          debugShowCheckedModeBanner: false,
-          title: 'Flutter Demo',
-          // LIGHT THEME
-          theme: ThemeData(
-            cardColor: Colors.deepPurple[100],
-            scaffoldBackgroundColor: Colors.deepPurple[100],
-            appBarTheme: AppBarTheme(
-              backgroundColor: Colors.deepPurple[400],
-              foregroundColor: Colors.white,
-            ),
-            bottomSheetTheme: BottomSheetThemeData(
-              backgroundColor: const Color.fromARGB(245, 179, 157, 219),
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-            ),
-          ),
-          // DARK THEME
-          darkTheme: ThemeData(
-            cardColor: const Color.fromARGB(255, 254, 217, 202),
-            scaffoldBackgroundColor: const Color(0xFFB6CEB4),
-            appBarTheme: AppBarTheme(
-              backgroundColor: Color(0xFF254F22),
-              foregroundColor: const Color.fromARGB(255, 255, 255, 255),
-            ),
-            bottomSheetTheme: BottomSheetThemeData(
-              backgroundColor: const Color.fromARGB(255, 159, 205, 154),
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-            ),
-          ),
-          home: StreamBuilder<User?>(
-            stream: FirebaseAuth.instance.authStateChanges(),
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                return const HomeScreen();
-              }
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                );
-              }
+      builder:
+          (context, themeProvider, _) => MaterialApp(
+            themeMode: themeProvider.themeMode,
 
-              return const LoginScreen();
-            },
+            // ✅ Light theme (only once)
+            theme: ThemeData(
+              brightness: Brightness.light,
+              colorScheme: ColorScheme.light(
+                primary: themeProvider.seedColor,
+                secondary: themeProvider.seedColor.withValues(alpha: 0.7),
+                surface: Colors.white,
+                onPrimary: Colors.white,
+                onSurface: Colors.black,
+              ),
+              scaffoldBackgroundColor: Colors.white,
+              appBarTheme: AppBarTheme(
+                backgroundColor: themeProvider.seedColor,
+                foregroundColor: Colors.white,
+              ),
+              useMaterial3: true,
+            ),
+
+            darkTheme: ThemeData(
+              brightness: Brightness.dark,
+              colorScheme: ColorScheme.dark(
+                primary: themeProvider.seedColor,
+                secondary: themeProvider.seedColor.withValues(alpha: 0.7),
+                surface: const Color(0xFF2C2C2C),
+                onPrimary: Colors.white,
+                onSurface: Colors.white,
+                // ✅ These two fix the bottom sheet and dialog backgrounds
+                surfaceContainer: const Color(0xFF2C2C2C),
+                surfaceContainerHigh: const Color(0xFF3A3A3A),
+                surfaceContainerHighest: const Color(0xFF3A3A3A),
+              ),
+              scaffoldBackgroundColor: const Color(0xFF2C2C2C),
+              appBarTheme: AppBarTheme(
+                backgroundColor: themeProvider.seedColor,
+                foregroundColor: Colors.white,
+              ),
+
+              bottomSheetTheme: const BottomSheetThemeData(
+                backgroundColor: Color(0xFF2C2C2C),
+                surfaceTintColor: Colors.transparent,
+                modalBackgroundColor: Color(0xFF2C2C2C),
+              ),
+
+              dialogTheme: const DialogThemeData(
+                backgroundColor: Color(0xFF2C2C2C),
+                surfaceTintColor: Colors.transparent,
+              ),
+              cardColor: const Color(0xFF3A3A3A),
+              useMaterial3: true,
+            ),
+
+            home: const HomeScreen(),
           ),
-        );
-      },
     );
   }
 }

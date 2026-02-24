@@ -1,5 +1,7 @@
+import 'package:chat_app/Provider/theme_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class ChatMediaScreen extends StatelessWidget {
   final String chatId;
@@ -7,7 +9,20 @@ class ChatMediaScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.themeMode == ThemeMode.dark;
+    final bgColor =
+        isDark
+            ? Color.alphaBlend(
+              themeProvider.seedColor.withValues(alpha: 0.5),
+              Colors.white, // blend with dark base
+            )
+            : Color.alphaBlend(
+              themeProvider.seedColor.withValues(alpha: 0.08),
+              Colors.white, // blend with white base
+            );
     return Scaffold(
+      backgroundColor: bgColor,
       appBar: AppBar(
         leading: IconButton(
           onPressed: () {

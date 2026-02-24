@@ -3,8 +3,10 @@ import 'dart:developer';
 
 import 'package:chat_app/Controller/friend_controller.dart';
 import 'package:chat_app/Modal/user_modal.dart';
+import 'package:chat_app/Provider/theme_provider.dart';
 import 'package:chat_app/UI/widget/friend_request.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class AddFriendScreen extends StatefulWidget {
   final String currentUserId;
@@ -46,7 +48,20 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.themeMode == ThemeMode.dark;
+    final bgColor =
+        isDark
+            ? Color.alphaBlend(
+              themeProvider.seedColor.withValues(alpha: 0.5),
+              Colors.white, // blend with dark base
+            )
+            : Color.alphaBlend(
+              themeProvider.seedColor.withValues(alpha: 0.08),
+              Colors.white, // blend with white base
+            );
     return Scaffold(
+      backgroundColor: bgColor,
       appBar: AppBar(
         title: const Text('Add Friends'),
         leading: IconButton(
@@ -70,8 +85,18 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
               controller: _searchController,
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Colors.black,
+                  ), // ✅ unfocused border
+                ),
                 hintText: 'Search by name...',
-                prefixIcon: const Icon(Icons.search),
+                hintStyle: TextStyle(
+                  color: const Color.fromARGB(255, 44, 41, 41),
+                ),
+                prefixIcon: Icon(Icons.search, color: Colors.black),
+
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

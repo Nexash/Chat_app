@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:chat_app/Controller/chat_controller.dart';
 import 'package:chat_app/Modal/message_model.dart';
 import 'package:chat_app/Modal/user_modal.dart';
+import 'package:chat_app/Provider/theme_provider.dart';
 import 'package:chat_app/UI/widget/chat_bubble.dart';
 import 'package:chat_app/UI/widget/drawer_widget.dart';
 import 'package:chat_app/UI/widget/typing_indicator.dart';
@@ -13,6 +14,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 class ChatScreen extends StatefulWidget {
   final UserModal user;
@@ -194,7 +196,18 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.themeMode == ThemeMode.dark;
+    final bgColor =
+        isDark
+            ? Color.alphaBlend(
+              themeProvider.seedColor.withValues(alpha: 0.5),
+              Colors.white, // blend with dark base
+            )
+            : Color.alphaBlend(
+              themeProvider.seedColor.withValues(alpha: 0.08),
+              Colors.white, // blend with white base
+            );
     final theme = Theme.of(context).appBarTheme.backgroundColor;
     return GestureDetector(
       onTap: () {
@@ -205,7 +218,7 @@ class _ChatScreenState extends State<ChatScreen> {
         key: _scaffoldKey,
         endDrawer: DrawerWidget(user: widget.user, chatId: chatId!),
         resizeToAvoidBottomInset: true,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: bgColor,
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -442,12 +455,14 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: TextField(
                               autofocus: false,
                               minLines: 1,
+                              style: TextStyle(color: Colors.black),
 
                               maxLines: 2,
                               controller: _messageController,
                               onChanged: (_) => _onTyping(),
                               decoration: const InputDecoration(
                                 hintText: "Type a message...",
+                                hintStyle: TextStyle(color: Colors.grey),
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 20,
                                   vertical: 10,
